@@ -266,6 +266,10 @@ Item {
                         }
                         return "";
                     }
+                    isInWatchlist: Services.AnimeScheduleService.isInWatchlist(modelData)
+                    onWatchlistToggled: function(anime) {
+                        Services.AnimeScheduleService.toggleWatchlist(anime);
+                    }
                 }
 
                 ScrollBar.vertical: ScrollBar {

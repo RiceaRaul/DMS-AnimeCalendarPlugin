@@ -17,6 +17,7 @@ PluginComponent {
     // Initialize service with API token from settings
     Component.onCompleted: {
         updateApiToken();
+        loadWatchlist();
     }
 
     // Watch for pluginData changes to update token
@@ -34,6 +35,22 @@ PluginComponent {
         const refreshInterval = (pluginData.refreshInterval || 15) * 60 * 1000;
         if (refreshInterval !== Services.AnimeScheduleService.updateInterval) {
             Services.AnimeScheduleService.updateInterval = refreshInterval;
+        }
+    }
+
+    function loadWatchlist() {
+        var saved = pluginData.watchlist || [];
+        Services.AnimeScheduleService.setWatchlist(saved);
+    }
+
+    function saveWatchlist() {
+        pluginData.watchlist = Services.AnimeScheduleService.watchlist;
+    }
+
+    Connections {
+        target: Services.AnimeScheduleService
+        function onWatchlistModified() {
+            root.saveWatchlist();
         }
     }
 

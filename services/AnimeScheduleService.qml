@@ -24,6 +24,12 @@ Singleton {
     property var todayAnime: []
     property int todayCount: 0
 
+    // Watchlist (local storage)
+    property var watchlist: []
+    property var watchlistTodayAnime: []
+    property int watchlistTodayCount: 0
+    property string watchlistFile: "/home/raul202/.config/quickshell/anime-watchlist.json"
+
     // Rate limiting
     property int rateLimitRemaining: 120
     property int rateLimitReset: 0
@@ -40,6 +46,7 @@ Singleton {
 
     signal timetableUpdated()
     signal errorOccurred(string message)
+    signal watchlistModified()
 
     function setApiToken(token) {
         root.apiToken = token;
@@ -169,6 +176,59 @@ Singleton {
         return "https://img.animeschedule.net/production/assets/public/img/" + route;
     }
 
+    function isInWatchlist(anime) {
+        if (!anime || !anime.route) return false;
+        return root.watchlist.indexOf(anime.route) !== -1;
+    }
+
+    function toggleWatchlist(anime) {
+        if (!anime || !anime.route) return;
+        var idx = root.watchlist.indexOf(anime.route);
+        var newList = root.watchlist.slice();
+        if (idx === -1) {
+            newList.push(anime.route);
+        } else {
+            newList.splice(idx, 1);
+        }
+        root.watchlist = newList;
+        updateWatchlistToday();
+        watchlistModified();
+        saveWatchlistToFile();
+    }
+
+    function setWatchlist(list) {
+        root.watchlist = list || [];
+        updateWatchlistToday();
+    }
+
+    function updateWatchlistToday() {
+        var result = [];
+        for (var i = 0; i < timetable.length; i++) {
+            var anime = timetable[i];
+            var airDate = parseDate(anime.episodeDate);
+            if (isToday(airDate) && isInWatchlist(anime)) {
+                result.push(anime);
+            }
+        }
+        result.sort(function(a, b) {
+            var dateA = parseDate(a.episodeDate);
+            var dateB = parseDate(b.episodeDate);
+            if (!dateA) return 1;
+            if (!dateB) return -1;
+            return dateA.getTime() - dateB.getTime();
+        });
+        root.watchlistTodayAnime = result;
+        root.watchlistTodayCount = result.length;
+    }
+
+    function saveWatchlistToFile() {
+        watchlistSaver.running = true;
+    }
+
+    function loadWatchlistFromFile() {
+        watchlistLoader.running = true;
+    }
+
     function filterTodayAnime() {
         const today = [];
         for (let i = 0; i < timetable.length; i++) {
@@ -188,6 +248,7 @@ Singleton {
         });
         root.todayAnime = today;
         root.todayCount = today.length;
+        updateWatchlistToday();
     }
 
     Process {
@@ -265,7 +326,32 @@ Singleton {
         }
     }
 
+    Process {
+        id: watchlistSaver
+        running: false
+        command: ["bash", "-c", "echo '" + JSON.stringify(root.watchlist) + "' > " + root.watchlistFile]
+    }
+
+    Process {
+        id: watchlistLoader
+        running: false
+        command: ["cat", root.watchlistFile]
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var raw = text.trim();
+                if (raw) {
+                    try {
+                        root.watchlist = JSON.parse(raw);
+                    } catch (e) {
+                        root.watchlist = [];
+                    }
+                }
+            }
+        }
+    }
+
     Component.onCompleted: {
-        // Initial fetch will be triggered when apiToken is set
+        loadWatchlistFromFile();
     }
 }

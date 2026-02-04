@@ -10,7 +10,7 @@ Item {
     anchors.fill: parent
 
     property bool isLoading: Services.AnimeScheduleService.isLoading
-    property var todayList: Services.AnimeScheduleService.todayAnime
+    property var todayList: Services.AnimeScheduleService.watchlistTodayAnime
 
     ColumnLayout {
         anchors.fill: parent
@@ -24,7 +24,7 @@ Item {
 
             StyledText {
                 Layout.fillWidth: true
-                text: "Airing Today"
+                text: "My Watchlist - Today"
                 font.pixelSize: Theme.fontSizeMedium
                 font.weight: Font.Bold
                 color: Theme.surfaceText
@@ -131,7 +131,7 @@ Item {
 
                 StyledText {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: "No anime airing today"
+                    text: "No watchlist anime today"
                     font.pixelSize: Theme.fontSizeMedium
                     font.weight: Font.Medium
                     color: Theme.surfaceText
@@ -139,7 +139,7 @@ Item {
 
                 StyledText {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: "Check back later"
+                    text: "Add anime from Season tab"
                     font.pixelSize: Theme.fontSizeSmall
                     color: Theme.surfaceVariantText
                 }
@@ -174,6 +174,10 @@ Item {
                             return Services.AnimeScheduleService.getImageUrl(modelData.imageVersionRoute);
                         }
                         return "";
+                    }
+                    isInWatchlist: true
+                    onWatchlistToggled: function(anime) {
+                        Services.AnimeScheduleService.toggleWatchlist(anime);
                     }
                 }
 

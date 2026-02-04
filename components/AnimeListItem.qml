@@ -12,6 +12,10 @@ Rectangle {
     property string airTime: ""
     property string timeUntil: ""
     property string imageUrl: ""
+    property bool isInWatchlist: false
+    property bool showWatchlistButton: true
+
+    signal watchlistToggled(var anime)
 
     width: parent ? parent.width : 200
     height: 72
@@ -90,6 +94,31 @@ Rectangle {
             }
         }
 
+        // Watchlist button
+        Rectangle {
+            Layout.preferredWidth: 32
+            Layout.preferredHeight: 32
+            Layout.alignment: Qt.AlignVCenter
+            radius: Theme.cornerRadiusSmall
+            color: starMouseArea.containsMouse ? Theme.primaryContainer : "transparent"
+            visible: root.showWatchlistButton
+
+            DankIcon {
+                anchors.centerIn: parent
+                name: root.isInWatchlist ? "star" : "star_border"
+                size: 20
+                color: root.isInWatchlist ? Theme.primary : Theme.surfaceVariantText
+            }
+
+            MouseArea {
+                id: starMouseArea
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.watchlistToggled(root.anime)
+            }
+        }
+
         // Time until column
         ColumnLayout {
             Layout.preferredWidth: 60
@@ -121,6 +150,7 @@ Rectangle {
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
+        z: -1
         onClicked: {
             // Open anime page in browser
             if (anime.route) {
