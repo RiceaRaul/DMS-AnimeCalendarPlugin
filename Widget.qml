@@ -4,28 +4,52 @@ import qs.Widgets
 import qs.Modules.Plugins
 import QtQuick.Layouts
 import "./components" as AnimeCalendarComponents
+import "./services" as Services
 
 PluginComponent {
     id: root
 
     property string displayText: pluginData.displayText || "Hello"
 
-    property int todayCount: 0
-    property bool isLoading: false
+    property int todayCount: Services.AnimeScheduleService.todayCount
+    property bool isLoading: Services.AnimeScheduleService.isLoading
+
+    // Initialize service with API token from settings
+    Component.onCompleted: {
+        updateApiToken();
+    }
+
+    // Watch for pluginData changes to update token
+    onPluginDataChanged: {
+        updateApiToken();
+    }
+
+    function updateApiToken() {
+        const token = pluginData.apiToken || "";
+        if (token !== Services.AnimeScheduleService.apiToken) {
+            Services.AnimeScheduleService.setApiToken(token);
+        }
+
+        // Update refresh interval from settings
+        const refreshInterval = (pluginData.refreshInterval || 15) * 60 * 1000;
+        if (refreshInterval !== Services.AnimeScheduleService.updateInterval) {
+            Services.AnimeScheduleService.updateInterval = refreshInterval;
+        }
+    }
 
     horizontalBarPill: Component {
         Row {
             spacing: Theme.spacingS
 
             DankIcon {
-                name: "widgets"
+                name: "calendar_month"
                 size: Theme.iconSize
                 color: Theme.primary
                 anchors.verticalCenter: parent.verticalCenter
             }
 
             StyledText {
-                text: root.displayText
+                text: root.todayCount > 0 ? root.todayCount + " today" : root.displayText
                 font.pixelSize: Theme.fontSizeMedium
                 color: Theme.surfaceText
                 anchors.verticalCenter: parent.verticalCenter
@@ -38,17 +62,18 @@ PluginComponent {
             spacing: Theme.spacingXS
 
             DankIcon {
-                name: "widgets"
+                name: "calendar_month"
                 size: Theme.iconSize
                 color: Theme.primary
                 anchors.horizontalCenter: parent.horizontalCenter
             }
 
             StyledText {
-                text: root.displayText
+                text: root.todayCount > 0 ? root.todayCount.toString() : ""
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.surfaceText
                 anchors.horizontalCenter: parent.horizontalCenter
+                visible: root.todayCount > 0
             }
         }
     }
@@ -117,15 +142,14 @@ PluginComponent {
                         currentIndex: 0
 
                         AnimeCalendarComponents.SeasonTab{
-                            
+
                         }
                         Rectangle {
                             color: "green"
                         }
 
-                        // Tab 3: Today (Placeholder)
-                        Rectangle {
-                            color: "transparent"
+                        // Tab 3: Today
+                        AnimeCalendarComponents.TodayTab {
                         }
                     }
                 }

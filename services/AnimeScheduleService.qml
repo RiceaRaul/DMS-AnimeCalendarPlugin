@@ -1,0 +1,271 @@
+pragma Singleton
+pragma ComponentBehavior: Bound
+
+import QtQuick
+import Quickshell
+import Quickshell.Io
+
+Singleton {
+    id: root
+
+    // API Configuration
+    property string apiToken: ""
+    property string baseUrl: "https://animeschedule.net/api/v3"
+
+    // State
+    property bool isLoading: false
+    property bool hasError: false
+    property string errorMessage: ""
+    property int lastFetchTime: 0
+    property int minFetchInterval: 30000 // 30 seconds minimum between requests
+
+    // Timetable data
+    property var timetable: []
+    property var todayAnime: []
+    property int todayCount: 0
+
+    // Rate limiting
+    property int rateLimitRemaining: 120
+    property int rateLimitReset: 0
+
+    // Retry logic
+    property int retryAttempts: 0
+    property int maxRetryAttempts: 3
+    property int retryDelay: 5000
+
+    // Update interval (default 15 minutes)
+    property int updateInterval: 900000
+
+    readonly property var curlBaseCmd: ["curl", "-sS", "--fail", "--connect-timeout", "10", "--max-time", "30", "--compressed"]
+
+    signal timetableUpdated()
+    signal errorOccurred(string message)
+
+    function setApiToken(token) {
+        root.apiToken = token;
+        if (token) {
+            refresh();
+        }
+    }
+
+    function getTimetableUrl(type) {
+        // type can be: "sub", "dub", "raw", or empty for all
+        const endpoint = type ? "/timetables/" + type : "/timetables/sub";
+        return baseUrl + endpoint;
+    }
+
+    function refresh() {
+        fetchTimetable("sub");
+    }
+
+    function fetchTimetable(type) {
+        if (!apiToken) {
+            root.hasError = true;
+            root.errorMessage = "API token not configured";
+            errorOccurred(root.errorMessage);
+            return;
+        }
+
+        if (timetableFetcher.running) {
+            return;
+        }
+
+        const now = Date.now();
+        if (now - root.lastFetchTime < root.minFetchInterval) {
+            return;
+        }
+
+        root.lastFetchTime = now;
+        root.isLoading = true;
+        root.hasError = false;
+        root.errorMessage = "";
+
+        const url = getTimetableUrl(type);
+        const authHeader = "Authorization: Bearer " + apiToken;
+
+        timetableFetcher.command = curlBaseCmd.concat([
+            "-H", authHeader,
+            "-H", "Accept: application/json",
+            url
+        ]);
+        timetableFetcher.running = true;
+    }
+
+    function forceRefresh() {
+        root.lastFetchTime = 0;
+        refresh();
+    }
+
+    function handleSuccess() {
+        root.retryAttempts = 0;
+        root.hasError = false;
+        root.errorMessage = "";
+        if (updateTimer.interval !== root.updateInterval) {
+            updateTimer.interval = root.updateInterval;
+        }
+    }
+
+    function handleFailure(message) {
+        root.retryAttempts++;
+        root.hasError = true;
+        root.errorMessage = message || "Failed to fetch data";
+        root.isLoading = false;
+
+        if (root.retryAttempts < root.maxRetryAttempts) {
+            retryTimer.start();
+        } else {
+            root.retryAttempts = 0;
+            errorOccurred(root.errorMessage);
+        }
+    }
+
+    function parseDate(dateString) {
+        if (!dateString || dateString === "0001-01-01T00:00:00Z") {
+            return null;
+        }
+        return new Date(dateString);
+    }
+
+    function formatTime(date) {
+        if (!date) return "--:--";
+        return date.toLocaleTimeString(Qt.locale(), "HH:mm");
+    }
+
+    function formatDate(date) {
+        if (!date) return "--";
+        return date.toLocaleDateString(Qt.locale(), "ddd, MMM d");
+    }
+
+    function isToday(date) {
+        if (!date) return false;
+        const today = new Date();
+        return date.getFullYear() === today.getFullYear() &&
+               date.getMonth() === today.getMonth() &&
+               date.getDate() === today.getDate();
+    }
+
+    function getTimeUntil(date) {
+        if (!date) return "";
+        const now = new Date();
+        const diff = date.getTime() - now.getTime();
+
+        if (diff < 0) return "Aired";
+
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+        if (hours > 24) {
+            const days = Math.floor(hours / 24);
+            return days + "d " + (hours % 24) + "h";
+        }
+        if (hours > 0) {
+            return hours + "h " + minutes + "m";
+        }
+        return minutes + "m";
+    }
+
+    function getImageUrl(route) {
+        if (!route) return "";
+        return "https://img.animeschedule.net/production/assets/public/img/" + route;
+    }
+
+    function filterTodayAnime() {
+        const today = [];
+        for (let i = 0; i < timetable.length; i++) {
+            const anime = timetable[i];
+            const airDate = parseDate(anime.episodeDate);
+            if (isToday(airDate)) {
+                today.push(anime);
+            }
+        }
+        // Sort by air time
+        today.sort((a, b) => {
+            const dateA = parseDate(a.episodeDate);
+            const dateB = parseDate(b.episodeDate);
+            if (!dateA) return 1;
+            if (!dateB) return -1;
+            return dateA.getTime() - dateB.getTime();
+        });
+        root.todayAnime = today;
+        root.todayCount = today.length;
+    }
+
+    Process {
+        id: timetableFetcher
+        running: false
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const raw = text.trim();
+
+                if (!raw) {
+                    root.handleFailure("Empty response from API");
+                    return;
+                }
+
+                // Check if it's an error response
+                if (raw.startsWith("{") && raw.includes("\"error\"")) {
+                    try {
+                        const errorData = JSON.parse(raw);
+                        root.handleFailure(errorData.message || errorData.error || "API error");
+                        return;
+                    } catch (e) {
+                        // Continue to try parsing as array
+                    }
+                }
+
+                if (!raw.startsWith("[")) {
+                    root.handleFailure("Invalid response format");
+                    return;
+                }
+
+                try {
+                    const data = JSON.parse(raw);
+
+                    if (!Array.isArray(data)) {
+                        throw new Error("Expected array response");
+                    }
+
+                    root.timetable = data;
+                    root.filterTodayAnime();
+                    root.isLoading = false;
+                    root.handleSuccess();
+                    root.timetableUpdated();
+
+                } catch (e) {
+                    root.handleFailure("Failed to parse response: " + e.message);
+                }
+            }
+        }
+
+        onExited: exitCode => {
+            if (exitCode !== 0) {
+                root.handleFailure("Request failed with exit code: " + exitCode);
+            }
+        }
+    }
+
+    Timer {
+        id: updateTimer
+        interval: root.updateInterval
+        running: root.apiToken !== ""
+        repeat: true
+        onTriggered: {
+            root.refresh();
+        }
+    }
+
+    Timer {
+        id: retryTimer
+        interval: root.retryDelay
+        running: false
+        repeat: false
+        onTriggered: {
+            root.refresh();
+        }
+    }
+
+    Component.onCompleted: {
+        // Initial fetch will be triggered when apiToken is set
+    }
+}

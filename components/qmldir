@@ -1,0 +1,5 @@
+EmptyState 1.0 EmptyState.qml
+LoadingState 1.0 LoadingState.qml
+SeasonTab 1.0 SeasonTab.qml
+TodayTab 1.0 TodayTab.qml
+AnimeListItem 1.0 AnimeListItem.qml
