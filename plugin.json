@@ -1,0 +1,15 @@
+{
+  "id": "animeCalendar",
+  "name": "Anime Calendar",
+  "description": "What this plugin does",
+  "version": "1.0.0",
+  "author": "Your Name",
+  "icon": "widgets",
+  "type": "widget",
+  "component": "./Widget.qml",
+  "settings": "./Settings.qml",
+  "permissions": [
+    "settings_read",
+    "settings_write"
+  ]
+}
