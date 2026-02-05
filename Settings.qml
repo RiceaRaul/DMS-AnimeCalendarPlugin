@@ -2,6 +2,8 @@ import QtQuick
 import qs.Common
 import qs.Modules.Plugins
 import qs.Widgets
+import Quickshell.Io
+import "./services" as Services
 
 PluginSettings {
     id: root
@@ -119,6 +121,14 @@ PluginSettings {
         defaultValue: "08:00"
     }
 
+    StringSetting {
+        settingKey: "notificationIcon"
+        label: "Notification Icon"
+        description: "Icon name or path (e.g., x-office-calendar, video-x-generic, /path/to/icon.png)"
+        placeholder: "x-office-calendar"
+        defaultValue: "x-office-calendar"
+    }
+
     Rectangle {
         width: parent.width
         height: 1
@@ -145,13 +155,44 @@ PluginSettings {
         unit: "min"
     }
 
-    SliderSetting {
-        settingKey: "cacheDuration"
-        label: "Cache Duration"
-        description: "How long to keep cached data"
-        defaultValue: 30
-        minimum: 10
-        maximum: 120
-        unit: "min"
+    Rectangle {
+        width: parent.width
+        height: 1
+        color: Theme.outline
+        opacity: 0.3
+    }
+
+    // Test Notifications
+    StyledText {
+        width: parent.width
+        text: "Test"
+        font.pixelSize: Theme.fontSizeMedium
+        font.weight: Font.Bold
+        color: Theme.surfaceText
+    }
+
+    Rectangle {
+        width: parent.width
+        height: 40
+        radius: Theme.cornerRadius
+        color: testMouseArea.containsMouse ? Theme.primaryContainer : Theme.surfaceContainerHigh
+        border.color: Theme.primary
+        border.width: 1
+
+        StyledText {
+            anchors.centerIn: parent
+            text: "Test Notification"
+            color: Theme.primary
+        }
+
+        MouseArea {
+            id: testMouseArea
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: {
+                Services.NotificationService.sendNotification("Anime Calendar Test", "Notifications are working!");
+            }
+        }
     }
 }

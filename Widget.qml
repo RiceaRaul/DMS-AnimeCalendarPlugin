@@ -3,6 +3,8 @@ import qs.Common
 import qs.Widgets
 import qs.Modules.Plugins
 import QtQuick.Layouts
+import Quickshell
+import Quickshell.Io
 import "./components" as AnimeCalendarComponents
 import "./services" as Services
 
@@ -38,15 +40,17 @@ PluginComponent {
         return todayCount > 0 ? todayCount + " today" : "";
     }
 
-    // Initialize service with API token from settings
+    // Initialize services
     Component.onCompleted: {
         updateApiToken();
         loadWatchlist();
+        configureNotifications();
     }
 
-    // Watch for pluginData changes to update token
+    // Watch for pluginData changes
     onPluginDataChanged: {
         updateApiToken();
+        configureNotifications();
     }
 
     function updateApiToken() {
@@ -63,12 +67,20 @@ PluginComponent {
     }
 
     function loadWatchlist() {
-        var saved = pluginData.watchlist || [];
-        Services.AnimeScheduleService.setWatchlist(saved);
+        Services.AnimeScheduleService.loadWatchlistFromFile();
     }
 
     function saveWatchlist() {
         pluginData.watchlist = Services.AnimeScheduleService.watchlist;
+    }
+
+    function configureNotifications() {
+        Services.NotificationService.configure({
+            enableInstantNotifications: pluginData.enableInstantNotifications !== false,
+            enableDailyDigest: pluginData.enableDailyDigest !== false,
+            digestTime: pluginData.digestTime || "08:00",
+            notificationIcon: pluginData.notificationIcon || "x-office-calendar"
+        });
     }
 
     Connections {
@@ -129,7 +141,7 @@ PluginComponent {
             id: popoutColumn
 
             headerText: "Anime Calendar"
-            detailsText: root.todayCount + " airing today"
+            detailsText: root.todayCount > 0 ? root.todayCount + " from watchlist airing today" : "No watchlist anime today"
             showCloseButton: true
 
             Item {

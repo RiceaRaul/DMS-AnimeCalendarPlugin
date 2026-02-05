@@ -1,1 +1,2 @@
 singleton AnimeScheduleService 1.0 AnimeScheduleService.qml
+singleton NotificationService 1.0 NotificationService.qml
