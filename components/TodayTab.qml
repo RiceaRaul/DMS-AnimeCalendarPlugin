@@ -10,21 +10,36 @@ Item {
     anchors.fill: parent
 
     property bool isLoading: Services.AnimeScheduleService.isLoading
-    property var todayList: Services.AnimeScheduleService.watchlistTodayAnime
+    property bool showAll: false
+    property var todayList: showAll ? root.allWatchlistAnime : Services.AnimeScheduleService.watchlistTodayAnime
+
+    // All watchlist anime (not just today)
+    property var allWatchlistAnime: {
+        var result = [];
+        var timetable = Services.AnimeScheduleService.timetable;
+        var watchlist = Services.AnimeScheduleService.watchlist;
+        if (!timetable || !watchlist) return result;
+        for (var i = 0; i < timetable.length; i++) {
+            var anime = timetable[i];
+            if (anime.route && watchlist.indexOf(anime.route) !== -1) {
+                result.push(anime);
+            }
+        }
+        return result;
+    }
 
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: Theme.spacingM
         spacing: Theme.spacingM
 
-        // Header with count
+        // Header with count and toggle
         RowLayout {
             Layout.fillWidth: true
             spacing: Theme.spacingS
 
             StyledText {
-                Layout.fillWidth: true
-                text: "My Watchlist - Today"
+                text: root.showAll ? "My Watchlist" : "Watchlist - Today"
                 font.pixelSize: Theme.fontSizeMedium
                 font.weight: Font.Bold
                 color: Theme.surfaceText
@@ -44,6 +59,55 @@ Item {
                     font.pixelSize: Theme.fontSizeSmall
                     font.weight: Font.Bold
                     color: Theme.onPrimaryContainer
+                }
+            }
+
+            Item { Layout.fillWidth: true }
+
+            // Toggle buttons
+            Row {
+                spacing: 0
+
+                Rectangle {
+                    width: watchlistBtnText.width + Theme.spacingM
+                    height: 28
+                    radius: Theme.cornerRadiusSmall
+                    color: !root.showAll ? Theme.primary : Theme.surfaceContainerHigh
+
+                    StyledText {
+                        id: watchlistBtnText
+                        anchors.centerIn: parent
+                        text: "Watchlist"
+                        font.pixelSize: Theme.fontSizeSmall
+                        color: !root.showAll ? Theme.onPrimary : Theme.surfaceVariantText
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.showAll = false
+                    }
+                }
+
+                Rectangle {
+                    width: allBtnText.width + Theme.spacingM
+                    height: 28
+                    radius: Theme.cornerRadiusSmall
+                    color: root.showAll ? Theme.primary : Theme.surfaceContainerHigh
+
+                    StyledText {
+                        id: allBtnText
+                        anchors.centerIn: parent
+                        text: "All"
+                        font.pixelSize: Theme.fontSizeSmall
+                        color: root.showAll ? Theme.onPrimary : Theme.surfaceVariantText
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.showAll = true
+                    }
                 }
             }
 
@@ -175,7 +239,7 @@ Item {
                         }
                         return "";
                     }
-                    isInWatchlist: true
+                    isInWatchlist: Services.AnimeScheduleService.isInWatchlist(modelData)
                     onWatchlistToggled: function(anime) {
                         Services.AnimeScheduleService.toggleWatchlist(anime);
                     }

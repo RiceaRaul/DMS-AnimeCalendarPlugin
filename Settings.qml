@@ -80,31 +80,7 @@ PluginSettings {
         ]
         defaultValue: "icon_count"
     }
-    SelectionSetting {
-        settingKey: "animeTypeFilter"
-        label: "Anime Type"
-        description: "Filter anime by type"
-        options: [
-            {
-                label: "Subbed",
-                value: "sub"
-            },
-            {
-                label: "Dubbed",
-                value: "dub"
-            },
-            {
-                label: "Raw",
-                value: "raw"
-            },
-            {
-                label: "All",
-                value: "all"
-            }
-        ]
-        defaultValue: "sub"
-    }
-
+  
     Rectangle {
         width: parent.width
         height: 1

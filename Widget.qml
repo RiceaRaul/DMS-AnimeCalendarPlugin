@@ -11,8 +11,32 @@ PluginComponent {
 
     property string displayText: pluginData.displayText || "Hello"
 
-    property int todayCount: Services.AnimeScheduleService.todayCount
+    property int todayCount: Services.AnimeScheduleService.watchlistTodayCount
     property bool isLoading: Services.AnimeScheduleService.isLoading
+    property string barMode: pluginData.barIndicatorMode || "icon_count"
+
+    // Get next airing time from watchlist
+    property string nextAiringTime: {
+        var list = Services.AnimeScheduleService.watchlistTodayAnime;
+        if (!list || list.length === 0) return "";
+        var now = new Date();
+        for (var i = 0; i < list.length; i++) {
+            var anime = list[i];
+            var airDate = Services.AnimeScheduleService.parseDate(anime.episodeDate);
+            if (airDate && airDate.getTime() > now.getTime()) {
+                return Services.AnimeScheduleService.getTimeUntil(airDate);
+            }
+        }
+        return "";
+    }
+
+    // Text to display based on mode
+    property string pillText: {
+        if (barMode === "icon_only") return "";
+        if (barMode === "icon_time") return nextAiringTime || (todayCount > 0 ? todayCount + " today" : "");
+        // icon_count (default)
+        return todayCount > 0 ? todayCount + " today" : "";
+    }
 
     // Initialize service with API token from settings
     Component.onCompleted: {
@@ -66,10 +90,11 @@ PluginComponent {
             }
 
             StyledText {
-                text: root.todayCount > 0 ? root.todayCount + " today" : root.displayText
+                text: root.pillText
                 font.pixelSize: Theme.fontSizeMedium
                 color: Theme.surfaceText
                 anchors.verticalCenter: parent.verticalCenter
+                visible: root.barMode !== "icon_only" && text !== ""
             }
         }
     }
@@ -86,11 +111,15 @@ PluginComponent {
             }
 
             StyledText {
-                text: root.todayCount > 0 ? root.todayCount.toString() : ""
+                text: {
+                    if (root.barMode === "icon_only") return "";
+                    if (root.barMode === "icon_time") return root.nextAiringTime || "";
+                    return root.todayCount > 0 ? root.todayCount.toString() : "";
+                }
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.surfaceText
                 anchors.horizontalCenter: parent.horizontalCenter
-                visible: root.todayCount > 0
+                visible: root.barMode !== "icon_only" && text !== ""
             }
         }
     }
@@ -119,10 +148,10 @@ PluginComponent {
 
                         Repeater {
                             id: tabRepeater
-                            model: ["Season", "Search", "Today"]
+                            model: ["Season", "Today"]
 
                             Rectangle{
-                                width: parent.width / 3
+                                width: parent.width / 2
                                 height: parent.height
                                 color: tabBar.currentIndex === index ? Theme.surfaceContainerHigh : "transparent"
 
@@ -158,14 +187,9 @@ PluginComponent {
                         height: parent.height - 40
                         currentIndex: 0
 
-                        AnimeCalendarComponents.SeasonTab{
-
-                        }
-                        Rectangle {
-                            color: "green"
+                        AnimeCalendarComponents.SeasonTab {
                         }
 
-                        // Tab 3: Today
                         AnimeCalendarComponents.TodayTab {
                         }
                     }
