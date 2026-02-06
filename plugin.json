@@ -1,9 +1,9 @@
 {
   "id": "animeCalendar",
   "name": "Anime Calendar",
-  "description": "What this plugin does",
+  "description": "A QuickShell plugin for DankMaterialShell that tracks anime episode releases and sends notifications when your favorite shows air.",
   "version": "1.0.0",
-  "author": "Your Name",
+  "author": "Ricea Ion Raul",
   "icon": "widgets",
   "type": "widget",
   "component": "./Widget.qml",
