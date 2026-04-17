@@ -28,7 +28,8 @@ Singleton {
     property var watchlist: []
     property var watchlistTodayAnime: []
     property int watchlistTodayCount: 0
-    property string watchlistFile: "/home/raul202/.config/quickshell/anime-watchlist.json"
+    readonly property string watchlistDir: Quickshell.env("HOME") + "/.config/quickshell"
+    readonly property string watchlistFile: watchlistDir + "/anime-watchlist.json"
 
     // Rate limiting
     property int rateLimitRemaining: 120
@@ -329,7 +330,11 @@ Singleton {
     Process {
         id: watchlistSaver
         running: false
-        command: ["bash", "-c", "echo '" + JSON.stringify(root.watchlist) + "' > " + root.watchlistFile]
+        command: [
+            "bash",
+            "-c",
+            "mkdir -p " + root.watchlistDir + " && echo '" + JSON.stringify(root.watchlist) + "' > " + root.watchlistFile
+        ]
     }
 
     Process {
