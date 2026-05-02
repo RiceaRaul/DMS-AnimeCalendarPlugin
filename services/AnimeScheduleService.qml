@@ -9,7 +9,10 @@ Singleton {
     id: root
 
     // API Configuration
-    property string apiToken: ""
+    property string apiTokenPath: ""
+    property string _tokenFromFile: ""
+    property string _tokenFromSettings: ""
+    readonly property string apiToken: apiTokenPath !== "" ? _tokenFromFile : _tokenFromSettings
     property string baseUrl: "https://animeschedule.net/api/v3"
 
     // State
@@ -50,9 +53,24 @@ Singleton {
     signal watchlistModified()
 
     function setApiToken(token) {
-        root.apiToken = token;
-        if (token) {
+        root._tokenFromSettings = token || "";
+        if (root.apiToken) {
             refresh();
+        }
+    }
+
+    function setApiTokenPath(path) {
+        root.apiTokenPath = path || "";
+        if (root.apiTokenPath) {
+            tokenFileLoader.running = true;
+        } else {
+            root._tokenFromFile = "";
+        }
+    }
+
+    function reloadApiTokenFile() {
+        if (root.apiTokenPath) {
+            tokenFileLoader.running = true;
         }
     }
 
@@ -324,6 +342,32 @@ Singleton {
         repeat: false
         onTriggered: {
             root.refresh();
+        }
+    }
+
+    Process {
+        id: tokenFileLoader
+        running: false
+        command: ["cat", root.apiTokenPath]
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const trimmed = (text || "").trim();
+                if (trimmed !== root._tokenFromFile) {
+                    root._tokenFromFile = trimmed;
+                    if (trimmed) {
+                        root.refresh();
+                    }
+                }
+            }
+        }
+
+        onExited: exitCode => {
+            if (exitCode !== 0) {
+                root.hasError = true;
+                root.errorMessage = "Failed to read API token file: " + root.apiTokenPath;
+                root._tokenFromFile = "";
+            }
         }
     }
 

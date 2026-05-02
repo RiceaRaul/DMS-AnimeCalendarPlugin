@@ -41,9 +41,17 @@ PluginSettings {
     }
 
     StringSetting {
+        settingKey: "apiTokenPath"
+        label: "API Token File Path"
+        description: "Path to a file containing the API token (takes precedence over the inline token below). Useful for declarative configs like NixOS."
+        placeholder: "/run/secrets/animeschedule_token"
+        defaultValue: ""
+    }
+
+    StringSetting {
         settingKey: "apiToken"
         label: "API Token"
-        description: "Get your token from animeschedule.net"
+        description: "Get your token from animeschedule.net. Ignored if a token file path is set."
         placeholder: "Enter API token"
         defaultValue: ""
     }
