@@ -54,8 +54,15 @@ PluginComponent {
     }
 
     function updateApiToken() {
+        const tokenPath = pluginData.apiTokenPath || "";
+        if (tokenPath !== Services.AnimeScheduleService.apiTokenPath) {
+            Services.AnimeScheduleService.setApiTokenPath(tokenPath);
+        } else if (tokenPath) {
+            Services.AnimeScheduleService.reloadApiTokenFile();
+        }
+
         const token = pluginData.apiToken || "";
-        if (token !== Services.AnimeScheduleService.apiToken) {
+        if (token !== Services.AnimeScheduleService._tokenFromSettings) {
             Services.AnimeScheduleService.setApiToken(token);
         }
 
