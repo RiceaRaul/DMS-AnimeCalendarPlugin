@@ -11,6 +11,7 @@ Item {
     readonly property var typeValues: ["sub", "dub", "raw"]
     readonly property var typeLabels: [I18n.trFor("animeCalendar", "Sub"), I18n.trFor("animeCalendar", "Dub"), I18n.trFor("animeCalendar", "Raw")]
     property bool isLoading: Services.AnimeScheduleService.isLoading
+    readonly property bool hasToken: Services.AnimeScheduleService.apiToken !== ""
     property var animeList: Services.AnimeScheduleService.timetable
 
     // Filtered list based on search and filter
@@ -69,49 +70,26 @@ Item {
             // Loading State
             LoadingState {
                 anchors.centerIn: parent
-                visible: root.isLoading && filteredList.length === 0
+                visible: root.hasToken && root.isLoading && filteredList.length === 0
             }
 
             // Empty State
             EmptyState {
                 anchors.centerIn: parent
-                visible: !root.isLoading && filteredList.length === 0 && Services.AnimeScheduleService.apiToken !== ""
+                visible: !root.isLoading && filteredList.length === 0 && Services.AnimeScheduleService.apiToken !== "" && !Services.AnimeScheduleService.hasError
             }
 
-            // No Token State
-            Column {
+            SetupState {
                 anchors.centerIn: parent
-                spacing: Theme.spacingM
-                visible: Services.AnimeScheduleService.apiToken === ""
-
-                DIcon {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    name: "key"
-                    size: Theme.iconSizeLarge
-                    color: Theme.surfaceVariantText
-                }
-
-                StyledText {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    text: I18n.trFor("animeCalendar", "API Token Required")
-                    font.pixelSize: Theme.fontSizeMedium
-                    font.weight: Font.Medium
-                    color: Theme.surfaceText
-                }
-
-                StyledText {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    text: I18n.trFor("animeCalendar", "Configure your token in plugin settings")
-                    font.pixelSize: Theme.fontSizeSmall
-                    color: Theme.surfaceVariantText
-                }
+                width: parent.width - Theme.spacingXL * 2
+                visible: !root.hasToken
             }
 
             // Error State
             Column {
                 anchors.centerIn: parent
                 spacing: Theme.spacingM
-                visible: Services.AnimeScheduleService.hasError && !root.isLoading
+                visible: Services.AnimeScheduleService.hasError && !root.isLoading && Services.AnimeScheduleService.apiToken !== "" && filteredList.length === 0
 
                 DIcon {
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -138,30 +116,11 @@ Item {
                     width: Math.min(implicitWidth, parent.parent.width - Theme.spacingXL * 2)
                 }
 
-                Rectangle {
+                DButton {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    width: retryText.width + Theme.spacingL * 2
-                    height: retryText.height + Theme.spacingM
-                    radius: Theme.cornerRadius
-                    color: retryArea.containsMouse ? Theme.primaryContainer : Theme.surfaceContainerHigh
-                    border.color: Theme.primary
-                    border.width: 1
-
-                    StyledText {
-                        id: retryText
-                        anchors.centerIn: parent
-                        text: I18n.trFor("animeCalendar", "Retry")
-                        font.pixelSize: Theme.fontSizeSmall
-                        color: Theme.primary
-                    }
-
-                    MouseArea {
-                        id: retryArea
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: Services.AnimeScheduleService.forceRefresh()
-                    }
+                    text: I18n.trFor("animeCalendar", "Retry")
+                    iconName: "refresh"
+                    onClicked: Services.AnimeScheduleService.forceRefresh()
                 }
             }
 
@@ -169,7 +128,7 @@ Item {
             DListView {
                 id: animeListView
                 anchors.fill: parent
-                visible: filteredList.length > 0
+                visible: root.hasToken && filteredList.length > 0
                 clip: true
                 spacing: Theme.spacingXS
 
@@ -183,7 +142,7 @@ Item {
                     airTime: {
                         const date = Services.AnimeScheduleService.parseDate(modelData.episodeDate);
                         if (!date) return "";
-                        return Services.AnimeScheduleService.I18n.trFor("animeCalendar", "%1 at %2").arg(Services.AnimeScheduleService.formatDate(date)).arg(Services.AnimeScheduleService.formatTime(date));
+                        return I18n.trFor("animeCalendar", "%1 at %2").arg(Services.AnimeScheduleService.formatDate(date)).arg(Services.AnimeScheduleService.formatTime(date));
                     }
                     timeUntil: {
                         const date = Services.AnimeScheduleService.parseDate(modelData.episodeDate);
@@ -208,7 +167,7 @@ Item {
                 anchors.bottom: parent.bottom
                 anchors.right: parent.right
                 anchors.margins: Theme.spacingS
-                visible: filteredList.length > 0 && searchText.length > 0
+                visible: root.hasToken && filteredList.length > 0 && searchText.length > 0
                 width: countText.width + Theme.spacingM
                 height: countText.height + Theme.spacingXS
                 radius: Theme.cornerRadiusS

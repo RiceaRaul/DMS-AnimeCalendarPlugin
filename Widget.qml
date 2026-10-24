@@ -12,6 +12,8 @@ PluginComponent {
 
     readonly property int todayCount: Services.AnimeScheduleService.watchlistTodayCount
     readonly property string barMode: pluginData.barIndicatorMode ?? "icon_count"
+    readonly property bool needsSetup: Services.AnimeScheduleService.apiToken === ""
+    readonly property string pillIcon: needsSetup ? "key_off" : "calendar_month"
 
     // Ticks the countdown; stopped while the bar is hidden or the countdown isn't shown
     SystemClock {
@@ -33,7 +35,7 @@ PluginComponent {
 
     readonly property string pillText: {
         const countText = todayCount > 0 ? I18n.trFor("animeCalendar", "%1 today").arg(todayCount) : "";
-        if (barMode === "icon_only")
+        if (needsSetup || barMode === "icon_only")
             return "";
         if (barMode === "icon_time")
             return nextAiringTime || countText;
@@ -47,7 +49,7 @@ PluginComponent {
 
             DIcon {
                 anchors.verticalCenter: parent.verticalCenter
-                name: "calendar_month"
+                name: root.pillIcon
                 size: root.iconSize
                 color: Theme.widgetIconColor
             }
@@ -68,7 +70,7 @@ PluginComponent {
 
             DIcon {
                 anchors.horizontalCenter: parent.horizontalCenter
-                name: "calendar_month"
+                name: root.pillIcon
                 size: root.iconSize
                 color: Theme.widgetIconColor
             }
@@ -77,7 +79,7 @@ PluginComponent {
                 anchors.horizontalCenter: parent.horizontalCenter
                 visible: text !== ""
                 text: {
-                    if (root.barMode === "icon_only")
+                    if (root.needsSetup || root.barMode === "icon_only")
                         return "";
                     if (root.barMode === "icon_time")
                         return root.nextAiringTime;
@@ -94,7 +96,7 @@ PluginComponent {
             id: popoutColumn
 
             headerText: I18n.trFor("animeCalendar", "Anime Calendar")
-            detailsText: root.todayCount > 0 ? I18n.trFor("animeCalendar", "%1 from watchlist airing today").arg(root.todayCount) : I18n.trFor("animeCalendar", "No watchlist anime today")
+            detailsText: root.needsSetup ? "" : root.todayCount > 0 ? I18n.trFor("animeCalendar", "%1 from watchlist airing today").arg(root.todayCount) : I18n.trFor("animeCalendar", "No watchlist anime today")
             showCloseButton: true
 
             Item {

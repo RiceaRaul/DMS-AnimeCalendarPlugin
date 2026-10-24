@@ -8,6 +8,8 @@ PluginComponent {
     id: root
 
     property bool watchlistLoaded: false
+    property bool backfilling: false
+    readonly property int detailsMaxAge: 24 * 60 * 60 * 1000
 
     Component.onCompleted: applySettings()
     onPluginDataChanged: applySettings()
@@ -80,10 +82,42 @@ PluginComponent {
         }
     }
 
+    // Fetches details once for entries saved without them, and daily for unfinished shows missing from the timetable
+    function backfillWatchlist() {
+        const service = Services.AnimeScheduleService;
+        if (root.backfilling || !service.apiToken)
+            return;
+        const airing = {};
+        for (const anime of service.timetable)
+            airing[anime.route] = true;
+        const now = Date.now();
+        const stale = service.watchlist.filter(entry => !entry.title || (!entry.finished && !airing[entry.route] && now - (entry.checked || 0) > root.detailsMaxAge));
+        if (!stale.length)
+            return;
+
+        root.backfilling = true;
+        const updates = [];
+        let pending = stale.length;
+        for (const entry of stale) {
+            service.request("/anime/" + encodeURIComponent(entry.route), null, (error, data) => {
+                if (!error && data && typeof data === "object")
+                    updates.push(Object.assign(service.detailsEntry(data), { route: entry.route }));
+                pending--;
+                if (pending > 0)
+                    return;
+                root.backfilling = false;
+                service.updateWatchlistEntries(updates);
+            });
+        }
+    }
+
     Connections {
         target: Services.AnimeScheduleService
         function onWatchlistModified() {
             root.saveWatchlist();
+        }
+        function onTimetableUpdated() {
+            root.backfillWatchlist();
         }
     }
 }

@@ -323,6 +323,69 @@ Singleton {
         updateWatchlistToday();
     }
 
+    function detailsEntry(details) {
+        const names = details.names || {};
+        return {
+            route: details.route,
+            title: details.title || "",
+            english: names.english || "",
+            romaji: names.romaji || "",
+            native: names.native || "",
+            image: details.imageVersionRoute || "",
+            episodes: Number(details.episodes) || 0,
+            finished: details.status === "Finished",
+            checked: Date.now()
+        };
+    }
+
+    function updateWatchlistEntries(updates) {
+        if (!updates.length)
+            return;
+        const byRoute = {};
+        for (const update of updates)
+            byRoute[update.route] = update;
+        root.watchlist = root.watchlist.map(entry => byRoute[entry.route] ? Object.assign({}, entry, byRoute[entry.route]) : entry);
+        watchlistModified();
+    }
+
+    function clearFinished() {
+        const finished = root.watchlistRows.filter(row => row.state === "finished").map(row => row.entry.route);
+        if (!finished.length)
+            return;
+        root.watchlist = root.watchlist.filter(entry => finished.indexOf(entry.route) === -1);
+        updateWatchlistToday();
+        watchlistModified();
+    }
+
+    function displayTitle(entry, anime) {
+        return entry?.title || anime?.title || entry?.route || anime?.route || I18n.trFor("animeCalendar", "Unknown");
+    }
+
+    // One row per starred show: state is "upcoming", "finished" or "notAiring" (not in this week's timetable)
+    readonly property var watchlistRows: {
+        const byRoute = {};
+        for (const anime of root.timetable)
+            byRoute[anime.route] = anime;
+        const rank = { upcoming: 0, notAiring: 1, finished: 2 };
+        const rows = root.watchlist.map(entry => {
+            const anime = byRoute[entry.route] || null;
+            if (!anime)
+                return { entry: entry, anime: null, state: entry.finished ? "finished" : "notAiring", date: null, episode: 0 };
+            const total = Number(anime.episodes) || entry.episodes || 0;
+            const episode = Number(anime.episodeNumber) || 0;
+            const lastAired = total > 0 && episode >= total && hasAired(parseDate(anime.episodeDate));
+            const next = nextAiring(anime);
+            return { entry: entry, anime: anime, state: lastAired ? "finished" : "upcoming", date: next.date, episode: next.episode };
+        });
+        return rows.sort((a, b) => {
+            if (a.state !== b.state)
+                return rank[a.state] - rank[b.state];
+            if (a.date && b.date && a.date.getTime() !== b.date.getTime())
+                return a.date.getTime() - b.date.getTime();
+            return displayTitle(a.entry, a.anime).localeCompare(displayTitle(b.entry, b.anime));
+        });
+    }
+
     function updateWatchlistToday() {
         var result = [];
         for (var i = 0; i < timetable.length; i++) {
