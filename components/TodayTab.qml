@@ -122,7 +122,7 @@ Item {
 
                 StyledText {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: I18n.trFor("animeCalendar", "Add anime from Season tab")
+                    text: I18n.trFor("animeCalendar", "Star shows in the This week tab")
                     font.pixelSize: Theme.fontSizeSmall
                     color: Theme.surfaceVariantText
                 }
@@ -150,8 +150,8 @@ Item {
                         if (row.state === "finished")
                             return I18n.trFor("animeCalendar", "Finished");
                         if (row.state === "notAiring")
-                            return I18n.trFor("animeCalendar", "Not airing this week");
-                        return row.episode > 0 ? I18n.trFor("animeCalendar", "Episode %1").arg(row.episode) : "";
+                            return I18n.trFor("animeCalendar", "No upcoming episode");
+                        return Services.AnimeScheduleService.episodeLabel(row.episode, Number(row.anime?.episodes) || row.entry.episodes || 0);
                     }
                     airTime: {
                         if (!row.date)
@@ -163,6 +163,7 @@ Item {
                     }
                     timeUntil: row.state === "upcoming" ? Services.AnimeScheduleService.getTimeUntil(row.date) : ""
                     aired: Services.AnimeScheduleService.hasAired(row.date)
+                    delayed: row.state === "upcoming" && Services.AnimeScheduleService.isDelayed(row.anime)
                     imageUrl: Services.AnimeScheduleService.getImageUrl(row.anime?.imageVersionRoute || row.entry.image)
                     isInWatchlist: Services.AnimeScheduleService.isInWatchlist(showItem)
                     onWatchlistToggled: anime => Services.AnimeScheduleService.toggleWatchlist(anime)

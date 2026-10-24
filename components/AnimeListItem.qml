@@ -12,6 +12,7 @@ Rectangle {
     property string airTime: ""
     property string timeUntil: ""
     property bool aired: false
+    property bool delayed: false
     property string imageUrl: ""
     property bool isInWatchlist: false
     property bool showWatchlistButton: true
@@ -110,6 +111,24 @@ Rectangle {
         ColumnLayout {
             Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
             spacing: Theme.spacingXXS
+
+            Rectangle {
+                Layout.alignment: Qt.AlignRight
+                Layout.preferredWidth: delayedText.width + Theme.spacingM
+                Layout.preferredHeight: delayedText.height + Theme.spacingXS
+                radius: Theme.cornerRadiusS
+                color: Theme.errorContainer
+                visible: root.delayed
+
+                StyledText {
+                    id: delayedText
+                    anchors.centerIn: parent
+                    text: I18n.trFor("animeCalendar", "Delayed")
+                    font.pixelSize: Theme.fontSizeSmall
+                    font.weight: Font.Medium
+                    color: Theme.onErrorContainer
+                }
+            }
 
             Rectangle {
                 Layout.alignment: Qt.AlignRight

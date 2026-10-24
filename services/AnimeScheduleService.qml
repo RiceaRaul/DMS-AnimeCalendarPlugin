@@ -20,16 +20,17 @@ Singleton {
     property bool isLoading: false
     property bool hasError: false
     property string errorMessage: ""
-    property int lastFetchTime: 0
+    property real lastFetchTime: 0
     property real lastUpdated: 0
     readonly property bool isOffline: hasError && timetable.length > 0
     readonly property int staleAfter: 15 * 60 * 1000
     property int minFetchInterval: 30000 // 30 seconds minimum between requests
 
-    // Timetable data
+    // This and next ISO week for timetableType; weeks holds every week loaded this session
     property var timetable: []
-    property var todayAnime: []
-    property int todayCount: 0
+    property var nextTimetable: []
+    property var weeks: ({})
+    readonly property int maxWeeks: 8
 
     // Entries { route, title, english, romaji, native, image, episodes, finished }, persisted by Daemon.qml
     property var watchlist: []
@@ -44,7 +45,7 @@ Singleton {
     // Update interval (default 15 minutes)
     property int updateInterval: 900000
 
-    // "sub", "dub" or "raw"
+    // "sub", "dub", "raw" or "all"
     property string timetableType: "sub"
 
     readonly property var curlBaseCmd: ["curl", "-sS", "--fail", "--connect-timeout", "10", "--max-time", "30", "--compressed"]
@@ -78,10 +79,6 @@ Singleton {
         }
     }
 
-    function getTimetableUrl(type) {
-        return baseUrl + "/timetables/" + (type || "sub");
-    }
-
     function refresh() {
         fetchTimetable(root.timetableType);
     }
@@ -90,6 +87,7 @@ Singleton {
         if (!type || type === root.timetableType)
             return;
         root.timetableType = type;
+        publishWeeks();
         forceRefresh();
     }
 
@@ -113,23 +111,89 @@ Singleton {
         root.hasError = false;
         root.errorMessage = "";
 
-        const week = isoWeek(new Date());
-        request("/timetables/" + (type || "sub"), { year: week.year, week: week.week }, (error, data) => {
-            if (error) {
-                root.handleFailure(error);
+        let pending = 2;
+        let currentError = null;
+        const finish = () => {
+            pending--;
+            if (pending > 0)
                 return;
-            }
-            if (!Array.isArray(data)) {
-                root.handleFailure(I18n.trFor("animeCalendar", "Invalid response format"));
-                return;
-            }
-            root.timetable = data;
-            root.lastUpdated = Date.now();
-            root.filterTodayAnime();
             root.isLoading = false;
+            // The type changed while loading; that fetch was skipped
+            if (type !== root.timetableType)
+                Qt.callLater(root.forceRefresh);
+            if (currentError) {
+                root.handleFailure(currentError);
+                return;
+            }
+            root.lastUpdated = Date.now();
             root.handleSuccess();
             root.timetableUpdated(false);
+        };
+        loadWeek(isoWeek(new Date()), type, error => {
+            currentError = error;
+            root.publishWeeks();
+            finish();
         });
+        loadWeek(isoWeek(addDays(new Date(), 7)), type, () => {
+            root.publishWeeks();
+            finish();
+        });
+    }
+
+    function loadWeek(week, type, done) {
+        const key = weekKey(week, type);
+        storeWeek(key, { loading: true });
+        request("/timetables/" + type, { year: week.year, week: week.week }, (error, data) => {
+            if (!error && !Array.isArray(data))
+                error = I18n.trFor("animeCalendar", "Invalid response format");
+            if (error)
+                storeWeek(key, { loading: false, error: error });
+            else
+                storeWeek(key, { loading: false, error: "", time: Date.now(), data: data });
+            if (done)
+                done(error);
+        });
+    }
+
+    // For browsing other weeks; a loaded week is reused until the refresh interval passes
+    function ensureWeek(week, type) {
+        if (!root.apiToken)
+            return;
+        const entry = root.weeks[weekKey(week, type)];
+        if (entry && (entry.loading || (entry.data && Date.now() - entry.time < root.updateInterval)))
+            return;
+        loadWeek(week, type, null);
+    }
+
+    function storeWeek(key, fields) {
+        const next = Object.assign({}, root.weeks);
+        next[key] = Object.assign({}, next[key], fields);
+        const keys = Object.keys(next);
+        if (keys.length > root.maxWeeks) {
+            const keep = [currentWeekKey(), nextWeekKey(), key];
+            const oldest = keys.filter(k => keep.indexOf(k) === -1 && !next[k].loading).sort((a, b) => (next[a].time || 0) - (next[b].time || 0))[0];
+            if (oldest)
+                delete next[oldest];
+        }
+        root.weeks = next;
+    }
+
+    function weekData(week, type) {
+        return root.weeks[weekKey(week, type)]?.data || [];
+    }
+
+    function currentWeekKey() {
+        return weekKey(isoWeek(new Date()), root.timetableType);
+    }
+
+    function nextWeekKey() {
+        return weekKey(isoWeek(addDays(new Date(), 7)), root.timetableType);
+    }
+
+    function publishWeeks() {
+        root.timetable = root.weeks[currentWeekKey()]?.data || [];
+        root.nextTimetable = root.weeks[nextWeekKey()]?.data || [];
+        updateWatchlistToday();
     }
 
     // callback(error, data): error is a translated message or null
@@ -204,13 +268,106 @@ Singleton {
         return week.year + "-" + week.week + ":" + type;
     }
 
-    function applyCachedTimetable(data, time) {
-        if (!Array.isArray(data) || time <= root.lastUpdated)
+    function addDays(date, days) {
+        const result = new Date(date.getTime());
+        result.setDate(result.getDate() + days);
+        return result;
+    }
+
+    // Cached { key: { time, data } } for this and next week
+    function applyCachedWeeks(saved) {
+        const keys = [currentWeekKey(), nextWeekKey()];
+        const current = saved?.[keys[0]];
+        if (!current || !Array.isArray(current.data) || current.time <= root.lastUpdated)
             return;
-        root.timetable = data;
-        root.lastUpdated = time;
-        filterTodayAnime();
+        for (const key of keys) {
+            if (saved[key] && Array.isArray(saved[key].data) && !root.weeks[key]?.data)
+                storeWeek(key, { time: saved[key].time, data: saved[key].data });
+        }
+        root.lastUpdated = current.time;
+        publishWeeks();
         timetableUpdated(true);
+    }
+
+    function cachedWeeks() {
+        const result = {};
+        for (const key of [currentWeekKey(), nextWeekKey()]) {
+            const entry = root.weeks[key];
+            if (entry?.data)
+                result[key] = { time: entry.time, data: entry.data };
+        }
+        return result;
+    }
+
+    // Day the shell's calendar starts its week on, as Date.getDay()
+    function weekStartDay() {
+        const setting = SettingsData.firstDayOfWeek;
+        return (setting < 0 || setting >= 7 ? Qt.locale().firstDayOfWeek : setting) % 7;
+    }
+
+    function viewWeekStart(offset) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return addDays(today, -((today.getDay() - weekStartDay() + 7) % 7) + offset * 7);
+    }
+
+    // A shown week that doesn't start on Monday spans two API weeks
+    function weeksCovering(start) {
+        const first = isoWeek(start);
+        const last = isoWeek(addDays(start, 6));
+        return first.week === last.week && first.year === last.year ? [first] : [first, last];
+    }
+
+    function viewEntries(start, type) {
+        const end = addDays(start, 7).getTime();
+        let list = [];
+        for (const week of weeksCovering(start))
+            list = list.concat(weekData(week, type));
+        return list.filter(anime => {
+            const date = parseDate(anime.episodeDate);
+            return date && date.getTime() >= start.getTime() && date.getTime() < end;
+        }).sort((a, b) => parseDate(a.episodeDate) - parseDate(b.episodeDate));
+    }
+
+    // With airType "all" the same episode comes as sub, dub and raw; keep one, preferring sub
+    function oneTypePerEpisode(list) {
+        if (root.timetableType !== "all")
+            return list;
+        const rank = { sub: 0, dub: 1, raw: 2 };
+        const best = {};
+        for (const anime of list) {
+            const key = anime.route + ":" + anime.episodeNumber;
+            if (!best[key] || (rank[anime.airType] ?? 3) < (rank[best[key].airType] ?? 3))
+                best[key] = anime;
+        }
+        return list.filter(anime => best[anime.route + ":" + anime.episodeNumber] === anime);
+    }
+
+    function isDelayed(anime) {
+        if (!anime)
+            return false;
+        const until = parseDate(anime.delayedUntil);
+        return anime.airingStatus === "delayed-air" || (!!until && until.getTime() > Date.now());
+    }
+
+    function episodeLabel(episode, total) {
+        if (!(episode > 0))
+            return "";
+        if (total > 0)
+            return I18n.trFor("animeCalendar", "Ep %1 / %2").arg(episode).arg(total);
+        return I18n.trFor("animeCalendar", "Ep %1").arg(episode);
+    }
+
+    function airTypeLabel(type) {
+        switch (type) {
+        case "sub":
+            return I18n.trFor("animeCalendar", "Sub");
+        case "dub":
+            return I18n.trFor("animeCalendar", "Dub");
+        case "raw":
+            return I18n.trFor("animeCalendar", "Raw");
+        }
+        return "";
     }
 
     function forceRefresh() {
@@ -264,21 +421,6 @@ Singleton {
         return date.getFullYear() === today.getFullYear() &&
                date.getMonth() === today.getMonth() &&
                date.getDate() === today.getDate();
-    }
-
-    // The timetable only holds this week's episode; an aired weekly show airs again 7 days later
-    function nextAiring(anime) {
-        const date = parseDate(anime.episodeDate);
-        const episode = Number(anime.episodeNumber) || 0;
-        if (!date || date.getTime() >= Date.now())
-            return { date: date, episode: episode };
-        const total = Number(anime.episodes) || 0;
-        if (total > 0 && episode >= total)
-            return { date: date, episode: episode };
-        return {
-            date: new Date(date.getTime() + 7 * 24 * 60 * 60 * 1000),
-            episode: episode > 0 ? episode + 1 : 0
-        };
     }
 
     function hasAired(date) {
@@ -393,21 +535,22 @@ Singleton {
         return entry?.title || anime?.title || entry?.route || anime?.route || I18n.trFor("animeCalendar", "Unknown");
     }
 
-    // One row per starred show: state is "upcoming", "finished" or "notAiring" (not in this week's timetable)
+    // One row per starred show; state is "upcoming", "finished" or "notAiring" (nothing scheduled this or next week)
     readonly property var watchlistRows: {
+        const now = Date.now();
         const byRoute = {};
-        for (const anime of root.timetable)
-            byRoute[anime.route] = anime;
+        for (const anime of oneTypePerEpisode(root.timetable.concat(root.nextTimetable)))
+            (byRoute[anime.route] = byRoute[anime.route] || []).push(anime);
         const rank = { upcoming: 0, notAiring: 1, finished: 2 };
         const rows = root.watchlist.map(entry => {
-            const anime = byRoute[entry.route] || null;
-            if (!anime)
-                return { entry: entry, anime: null, state: entry.finished ? "finished" : "notAiring", date: null, episode: 0 };
-            const total = Number(anime.episodes) || entry.episodes || 0;
-            const episode = Number(anime.episodeNumber) || 0;
-            const lastAired = total > 0 && episode >= total && hasAired(parseDate(anime.episodeDate));
-            const next = nextAiring(anime);
-            return { entry: entry, anime: anime, state: lastAired ? "finished" : "upcoming", date: next.date, episode: next.episode };
+            const list = (byRoute[entry.route] || []).slice().sort((a, b) => parseDate(a.episodeDate) - parseDate(b.episodeDate));
+            const upcoming = list.find(anime => parseDate(anime.episodeDate)?.getTime() >= now);
+            if (upcoming)
+                return { entry: entry, anime: upcoming, state: "upcoming", date: parseDate(upcoming.episodeDate), episode: Number(upcoming.episodeNumber) || 0 };
+            const latest = list[list.length - 1] || null;
+            const total = Number(latest?.episodes) || entry.episodes || 0;
+            const finished = entry.finished || (!!latest && total > 0 && Number(latest.episodeNumber) >= total);
+            return { entry: entry, anime: latest, state: finished ? "finished" : "notAiring", date: null, episode: 0 };
         });
         return rows.sort((a, b) => {
             if (a.state !== b.state)
@@ -419,45 +562,10 @@ Singleton {
     }
 
     function updateWatchlistToday() {
-        var result = [];
-        for (var i = 0; i < timetable.length; i++) {
-            var anime = timetable[i];
-            var airDate = parseDate(anime.episodeDate);
-            if (isToday(airDate) && isInWatchlist(anime)) {
-                result.push(anime);
-            }
-        }
-        result.sort(function(a, b) {
-            var dateA = parseDate(a.episodeDate);
-            var dateB = parseDate(b.episodeDate);
-            if (!dateA) return 1;
-            if (!dateB) return -1;
-            return dateA.getTime() - dateB.getTime();
-        });
+        const result = oneTypePerEpisode(root.timetable).filter(anime => isToday(parseDate(anime.episodeDate)) && isInWatchlist(anime));
+        result.sort((a, b) => parseDate(a.episodeDate) - parseDate(b.episodeDate));
         root.watchlistTodayAnime = result;
         root.watchlistTodayCount = result.length;
-    }
-
-    function filterTodayAnime() {
-        const today = [];
-        for (let i = 0; i < timetable.length; i++) {
-            const anime = timetable[i];
-            const airDate = parseDate(anime.episodeDate);
-            if (isToday(airDate)) {
-                today.push(anime);
-            }
-        }
-        // Sort by air time
-        today.sort((a, b) => {
-            const dateA = parseDate(a.episodeDate);
-            const dateB = parseDate(b.episodeDate);
-            if (!dateA) return 1;
-            if (!dateB) return -1;
-            return dateA.getTime() - dateB.getTime();
-        });
-        root.todayAnime = today;
-        root.todayCount = today.length;
-        updateWatchlistToday();
     }
 
     Process {

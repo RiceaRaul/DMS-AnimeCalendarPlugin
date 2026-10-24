@@ -118,23 +118,11 @@ PluginComponent {
         if (root.cacheLoaded || !pluginService || !pluginId)
             return;
         root.cacheLoaded = true;
-        const service = Services.AnimeScheduleService;
-        const cached = pluginService.loadPluginState(pluginId, "timetables", {})[service.weekKey(service.isoWeek(new Date()), service.timetableType)];
-        if (cached)
-            service.applyCachedTimetable(cached.data, cached.time);
+        Services.AnimeScheduleService.applyCachedWeeks(pluginService.loadPluginState(pluginId, "timetables", {}));
     }
 
     function saveCache() {
-        const service = Services.AnimeScheduleService;
-        const key = service.weekKey(service.isoWeek(new Date()), service.timetableType);
-        const saved = pluginService.loadPluginState(pluginId, "timetables", {});
-        const kept = {};
-        for (const other in saved) {
-            if (other.split(":")[0] === key.split(":")[0])
-                kept[other] = saved[other];
-        }
-        kept[key] = { time: service.lastUpdated, data: service.timetable };
-        pluginService.savePluginState(pluginId, "timetables", kept);
+        pluginService.savePluginState(pluginId, "timetables", Services.AnimeScheduleService.cachedWeeks());
     }
 
     Connections {

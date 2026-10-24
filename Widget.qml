@@ -116,7 +116,7 @@ PluginComponent {
                     anchors.right: parent.right
                     tabHeight: Theme.buttonHeightS
                     model: [
-                        { text: I18n.trFor("animeCalendar", "Season"), icon: "calendar_month" },
+                        { text: I18n.trFor("animeCalendar", "This week"), icon: "date_range" },
                         { text: I18n.trFor("animeCalendar", "Today"), icon: "today" }
                     ]
                     onTabClicked: index => tabBar.currentIndex = index
@@ -129,7 +129,7 @@ PluginComponent {
                     anchors.bottom: updatedRow.visible ? updatedRow.top : parent.bottom
                     currentIndex: tabBar.currentIndex
 
-                    AnimeCalendarComponents.SeasonTab {}
+                    AnimeCalendarComponents.WeekTab {}
 
                     AnimeCalendarComponents.TodayTab {}
                 }
