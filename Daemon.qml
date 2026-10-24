@@ -8,6 +8,7 @@ PluginComponent {
     id: root
 
     property bool watchlistLoaded: false
+    property bool cacheLoaded: false
     property bool backfilling: false
     readonly property int detailsMaxAge: 24 * 60 * 60 * 1000
 
@@ -15,6 +16,7 @@ PluginComponent {
     onPluginDataChanged: applySettings()
 
     function applySettings() {
+        loadCache();
         updateApiToken();
         loadWatchlist();
         configureNotifications();
@@ -111,12 +113,38 @@ PluginComponent {
         }
     }
 
+    // Shown before the first fetch; a fresh cache also skips the fetch on start
+    function loadCache() {
+        if (root.cacheLoaded || !pluginService || !pluginId)
+            return;
+        root.cacheLoaded = true;
+        const service = Services.AnimeScheduleService;
+        const cached = pluginService.loadPluginState(pluginId, "timetables", {})[service.weekKey(service.isoWeek(new Date()), service.timetableType)];
+        if (cached)
+            service.applyCachedTimetable(cached.data, cached.time);
+    }
+
+    function saveCache() {
+        const service = Services.AnimeScheduleService;
+        const key = service.weekKey(service.isoWeek(new Date()), service.timetableType);
+        const saved = pluginService.loadPluginState(pluginId, "timetables", {});
+        const kept = {};
+        for (const other in saved) {
+            if (other.split(":")[0] === key.split(":")[0])
+                kept[other] = saved[other];
+        }
+        kept[key] = { time: service.lastUpdated, data: service.timetable };
+        pluginService.savePluginState(pluginId, "timetables", kept);
+    }
+
     Connections {
         target: Services.AnimeScheduleService
         function onWatchlistModified() {
             root.saveWatchlist();
         }
-        function onTimetableUpdated() {
+        function onTimetableUpdated(fromCache) {
+            if (!fromCache)
+                root.saveCache();
             root.backfillWatchlist();
         }
     }

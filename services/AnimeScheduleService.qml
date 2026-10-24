@@ -21,6 +21,9 @@ Singleton {
     property bool hasError: false
     property string errorMessage: ""
     property int lastFetchTime: 0
+    property real lastUpdated: 0
+    readonly property bool isOffline: hasError && timetable.length > 0
+    readonly property int staleAfter: 15 * 60 * 1000
     property int minFetchInterval: 30000 // 30 seconds minimum between requests
 
     // Timetable data
@@ -50,15 +53,14 @@ Singleton {
     property var _queue: []
     property var _active: null
 
-    signal timetableUpdated()
+    // fromCache: loaded from plugin state on start, not fetched
+    signal timetableUpdated(bool fromCache)
     signal errorOccurred(string message)
     signal watchlistModified()
 
     function setApiToken(token) {
         root._tokenFromSettings = token || "";
-        if (root.apiToken) {
-            refresh();
-        }
+        refreshIfStale();
     }
 
     function setApiTokenPath(path) {
@@ -111,7 +113,8 @@ Singleton {
         root.hasError = false;
         root.errorMessage = "";
 
-        request("/timetables/" + (type || "sub"), null, (error, data) => {
+        const week = isoWeek(new Date());
+        request("/timetables/" + (type || "sub"), { year: week.year, week: week.week }, (error, data) => {
             if (error) {
                 root.handleFailure(error);
                 return;
@@ -121,10 +124,11 @@ Singleton {
                 return;
             }
             root.timetable = data;
+            root.lastUpdated = Date.now();
             root.filterTodayAnime();
             root.isLoading = false;
             root.handleSuccess();
-            root.timetableUpdated();
+            root.timetableUpdated(false);
         });
     }
 
@@ -179,6 +183,34 @@ Singleton {
         for (const callback of job.callbacks)
             callback(error, data);
         root._runNext();
+    }
+
+    function refreshIfStale() {
+        if (!root.apiToken)
+            return;
+        if (root.hasError || !root.timetable.length || Date.now() - root.lastUpdated > root.staleAfter)
+            refresh();
+    }
+
+    // ISO week, Monday to Sunday, matching the API's year/week parameters
+    function isoWeek(date) {
+        const day = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+        day.setUTCDate(day.getUTCDate() + 4 - (day.getUTCDay() || 7));
+        const yearStart = Date.UTC(day.getUTCFullYear(), 0, 1);
+        return { year: day.getUTCFullYear(), week: Math.ceil(((day.getTime() - yearStart) / 86400000 + 1) / 7) };
+    }
+
+    function weekKey(week, type) {
+        return week.year + "-" + week.week + ":" + type;
+    }
+
+    function applyCachedTimetable(data, time) {
+        if (!Array.isArray(data) || time <= root.lastUpdated)
+            return;
+        root.timetable = data;
+        root.lastUpdated = time;
+        filterTodayAnime();
+        timetableUpdated(true);
     }
 
     function forceRefresh() {
@@ -481,9 +513,7 @@ Singleton {
                 const trimmed = (text || "").trim();
                 if (trimmed !== root._tokenFromFile) {
                     root._tokenFromFile = trimmed;
-                    if (trimmed) {
-                        root.refresh();
-                    }
+                    root.refreshIfStale();
                 }
             }
         }
