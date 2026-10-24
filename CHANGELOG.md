@@ -4,7 +4,29 @@
 
 Dux Shell 2.0 version. Requires DMS/Dux Shell 2.0 or newer; use the `dms-variant` branch for older shells.
 
+Existing users: the plugin is now a composite plugin (a background daemon plus the bar widget). If it shows as disabled after updating, turn it on again in Settings → Plugins.
+
+### Features
+- "This week" tab (was "Season"): shows grouped by day, today highlighted, previous / next week arrows and a button back to this week. The week starts on the shell's first day of the week.
+- Air type filter gains "All" (sub, dub and raw together, each row labelled).
+- Next episodes come from next week's timetable instead of a "+7 days" guess.
+- "Delayed" badge for delayed episodes; episode counts show as "Ep 3 / 12".
+- Watchlist "All" view lists every starred show, airing or not, with its status (upcoming, no upcoming episode, finished), sorted by next airing. Stars remove any show, and "Clear finished" removes all finished ones.
+- Shows starred before this version get their titles and images fetched once.
+- Setup screen when no API token is set, with links to the token docs and the plugin settings; the bar icon shows a key until a token is set.
+- The last fetched timetable is cached and shown right away on start. With no network the popout keeps it and says "Offline — showing data from …"; a footer shows when data was last updated.
+- Opening the popout refreshes data older than 15 minutes.
+
+### Fixes
+- Failed requests now retry; the retry was always blocked by the 30-second request limit.
+- The 30-second request limit itself never worked (timestamp stored in an int).
+- The air time line in the Season tab was always blank.
+- Error, empty and token screens no longer overlap each other or the list.
+
 ### Changes
+- Settings, watchlist saving and notifications run once in a daemon instead of once per bar.
+- Requests go through one queue, one curl at a time; the token is still passed on stdin.
+- Watchlist entries are stored with titles, image and episode count instead of only the show route. Old entries are converted.
 - Uses the shared `qs.DCommon.Widgets` components (DIcon, DTextField, DDropdown, DActionButton, DButton, DButtonGroup, DTabBar, DListView, DSpinner).
 - All user-facing text goes through `I18n.trFor`, so the plugin can ship translations.
 - Bar pill follows the bar or dock size and widget colors.

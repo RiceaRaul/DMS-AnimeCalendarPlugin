@@ -1,12 +1,14 @@
 # Anime Calendar Plugin
 
-A QuickShell plugin for DankMaterialShell that tracks anime episode releases and sends notifications when your favorite shows air.
+A plugin for Dux Shell (DankMaterialShell 2.0) that tracks anime episode releases from [animeschedule.net](https://animeschedule.net) and sends notifications when your favorite shows air.
 
 ## Features
 
-- **Season Overview** - Browse all anime airing this season
-- **Watchlist Management** - Add/remove anime to your personal watchlist
-- **Today's Schedule** - See which watchlist anime are airing today
+- **Week View** - Browse what airs this week, grouped by day, and step to previous or next weeks
+- **Sub / Dub / Raw / All** - Pick which releases to show
+- **Watchlist** - Star shows; see today's episodes or every starred show with its next episode, delays and finished shows
+- **Real Dates** - Next episodes come from the API's timetable, with delayed episodes marked
+- **Offline Cache** - The last fetched timetable shows right away on start and stays visible without network
 - **Desktop Notifications** - Get notified when episodes air
   - Instant notifications when an episode starts
   - Daily digest summary of today's episodes
@@ -15,8 +17,8 @@ A QuickShell plugin for DankMaterialShell that tracks anime episode releases and
 
 ## Screenshots
 
-### Season Tab
-![Season Tab](screenshots/season-tab.png)
+### Week Tab
+![Week Tab](screenshots/season-tab.png)
 
 ### Today Tab
 ![Today Tab](screenshots/today-tab.png)
@@ -34,21 +36,22 @@ A QuickShell plugin for DankMaterialShell that tracks anime episode releases and
 
 ## Installation
 
-1. Clone or copy this plugin to your DankMaterialShell plugins directory:
+1. Clone this plugin into your plugins directory:
    ```
-   ~/.config/DankMaterialShell/plugins/AnimeCalendar/
+   git clone https://github.com/RiceaRaul/DMS-AnimeCalendarPlugin ~/.config/dms/plugins/animeCalendar
    ```
 
-2. Enable the plugin in DankMaterialShell settings
+2. Enable the plugin in Settings → Plugins and add the widget to your bar
 
-3. Get your API token from [animeschedule.net](https://animeschedule.net) and add it in the plugin settings
+3. Create an application on [animeschedule.net](https://animeschedule.net/api/v3/documentation) to get an application token, and paste it in the plugin settings (the popout shows a setup screen with both links until a token is set)
 
 ## Configuration
 
 ### API Configuration
 | Setting | Description |
 |---------|-------------|
-| API Token | Your animeschedule.net API token |
+| API Token | Your animeschedule.net application token |
+| API Token Path | File to read the token from instead (takes precedence over API Token) |
 
 ### Display Settings
 | Setting | Description |
@@ -70,22 +73,24 @@ A QuickShell plugin for DankMaterialShell that tracks anime episode releases and
 
 ## Usage
 
-1. **Browse Season Tab** - See all anime airing this season
+1. **This week** - See what airs this week by day; use the arrows for other weeks
 2. **Add to Watchlist** - Click the star icon on any anime to add it to your watchlist
-3. **Check Today Tab** - View your watchlist anime airing today
-4. **Toggle View** - Switch between "Watchlist" (today only) and "All" (full watchlist)
+3. **Today tab** - "Watchlist" shows today's episodes, "All" shows every starred show with its next episode or status
+4. **Clear finished** - In "All", remove every finished show at once
 5. **Receive Notifications** - Get notified when your anime airs
 
 ## File Structure
 
 ```
-AnimeCalendar/
-├── Widget.qml           # Main plugin component
+animeCalendar/
+├── Daemon.qml           # Settings, watchlist saving, cache, notifications setup
+├── Widget.qml           # Bar pill and popout
 ├── Settings.qml         # Plugin settings UI
 ├── components/
-│   ├── SeasonTab.qml    # Season overview tab
-│   ├── TodayTab.qml     # Today's anime tab
+│   ├── WeekTab.qml      # Week view tab
+│   ├── TodayTab.qml     # Watchlist tab
 │   ├── AnimeListItem.qml # Anime list item component
+│   ├── SetupState.qml   # No-token setup screen
 │   └── LoadingState.qml  # Loading indicator
 ├── services/
 │   ├── AnimeScheduleService.qml  # API and data management
@@ -97,6 +102,7 @@ AnimeCalendar/
 
 Your watchlist is stored in the plugin settings (DMS `plugin_settings.json`).
 Versions before 1.0.2 kept it in `~/.config/quickshell/anime-watchlist.json`; that file is imported once on first start and can be deleted afterwards.
+The cached timetable lives in the plugin state file (`~/.local/state/dms/plugins/animeCalendar_state.json`).
 
 ## License
 
@@ -105,4 +111,4 @@ MIT License
 ## Credits
 
 - Anime data provided by [animeschedule.net](https://animeschedule.net)
-- Built for [DankMaterialShell](https://github.com/your-repo/DankMaterialShell)
+- Built for [Dux Shell](https://github.com/duxlabs-dev/dux-shell)
