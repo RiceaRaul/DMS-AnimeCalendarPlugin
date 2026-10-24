@@ -175,6 +175,25 @@ Singleton {
                date.getDate() === today.getDate();
     }
 
+    // The timetable only holds this week's episode; an aired weekly show airs again 7 days later
+    function nextAiring(anime) {
+        const date = parseDate(anime.episodeDate);
+        const episode = Number(anime.episodeNumber) || 0;
+        if (!date || date.getTime() >= Date.now())
+            return { date: date, episode: episode };
+        const total = Number(anime.episodes) || 0;
+        if (total > 0 && episode >= total)
+            return { date: date, episode: episode };
+        return {
+            date: new Date(date.getTime() + 7 * 24 * 60 * 60 * 1000),
+            episode: episode > 0 ? episode + 1 : 0
+        };
+    }
+
+    function hasAired(date) {
+        return !!date && date.getTime() < Date.now();
+    }
+
     function getTimeUntil(date) {
         if (!date) return "";
         const now = new Date();

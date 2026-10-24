@@ -6,7 +6,6 @@ import "../services" as Services
 
 Item {
     id: root
-    anchors.fill: parent
 
     property bool isLoading: Services.AnimeScheduleService.isLoading
     property bool showAll: false
@@ -194,16 +193,22 @@ Item {
                     width: todayListView.width
                     anime: modelData
                     title: modelData.title || modelData.route || "Unknown"
-                    episodeNumber: modelData.episodeNumber ? "Episode " + modelData.episodeNumber : ""
+                    // "All" shows the upcoming episode; "Watchlist" shows today's as listed
+                    readonly property var airing: root.showAll ? Services.AnimeScheduleService.nextAiring(modelData) : {
+                        date: Services.AnimeScheduleService.parseDate(modelData.episodeDate),
+                        episode: Number(modelData.episodeNumber) || 0
+                    }
+
+                    episodeNumber: airing.episode > 0 ? "Episode " + airing.episode : ""
                     airTime: {
-                        const date = Services.AnimeScheduleService.parseDate(modelData.episodeDate);
-                        if (!date) return "";
-                        return "Today at " + Services.AnimeScheduleService.formatTime(date);
+                        if (!airing.date)
+                            return "";
+                        const time = Services.AnimeScheduleService.formatTime(airing.date);
+                        if (Services.AnimeScheduleService.isToday(airing.date))
+                            return "Today at " + time;
+                        return Services.AnimeScheduleService.formatDate(airing.date) + " at " + time;
                     }
-                    timeUntil: {
-                        const date = Services.AnimeScheduleService.parseDate(modelData.episodeDate);
-                        return Services.AnimeScheduleService.getTimeUntil(date);
-                    }
+                    timeUntil: Services.AnimeScheduleService.getTimeUntil(airing.date)
                     imageUrl: {
                         if (modelData.imageVersionRoute) {
                             return Services.AnimeScheduleService.getImageUrl(modelData.imageVersionRoute);

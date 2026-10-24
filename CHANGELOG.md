@@ -10,6 +10,7 @@
 - Watchlist is stored in plugin settings instead of `~/.config/quickshell/anime-watchlist.json`. The old file is imported once.
 - The Sub/Dub/Raw selector in the Season tab now switches the timetable. It previously did nothing.
 - UI uses DMS widgets (DankTextField, DankDropdown, DankActionButton, DankButton, DankListView) and Theme sizes instead of raw Qt controls and fixed pixel values.
+- The "All" view in the Today tab showed every show as "Today". It now shows the real air date, or the next weekly episode for shows that already aired.
 - Fixed corner radii that used a Theme token that doesn't exist and rendered square.
 - Manifest lists `curl` and `notify-send` as dependencies and mentions the animeschedule.net API token.
 

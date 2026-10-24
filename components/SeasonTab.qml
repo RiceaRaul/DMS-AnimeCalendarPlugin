@@ -6,7 +6,6 @@ import "../services" as Services
 
 Item {
     id: root
-    anchors.fill: parent
 
     property string searchText: ""
     readonly property var typeLabels: ["Sub", "Dub", "Raw"]
