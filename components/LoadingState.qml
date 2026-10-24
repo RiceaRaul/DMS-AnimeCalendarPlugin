@@ -1,8 +1,6 @@
-// LoadingState.qml - Loading indicator component
 import QtQuick
 import qs.Common
 import qs.Widgets
-import QtQuick.Controls 
 
 Column {
     id: root
@@ -11,11 +9,19 @@ Column {
     spacing: Theme.spacingL
     anchors.centerIn: parent
 
-    BusyIndicator {
+    DankIcon {
         anchors.horizontalCenter: parent.horizontalCenter
-        running: true
-        width: 48
-        height: 48
+        name: "progress_activity"
+        size: Theme.iconSizeLarge
+        color: Theme.primary
+
+        RotationAnimation on rotation {
+            running: root.visible
+            from: 0
+            to: 360
+            duration: 1000
+            loops: Animation.Infinite
+        }
     }
 
     StyledText {

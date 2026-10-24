@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
 import qs.Common
 import qs.Widgets
@@ -48,7 +47,7 @@ Item {
             Rectangle {
                 Layout.preferredWidth: countBadge.width + Theme.spacingM
                 Layout.preferredHeight: countBadge.height + Theme.spacingXS
-                radius: Theme.cornerRadiusSmall
+                radius: Theme.cornerRadius / 2
                 color: Theme.primaryContainer
                 visible: todayList.length > 0
 
@@ -66,12 +65,12 @@ Item {
 
             // Toggle buttons
             Row {
-                spacing: 0
+                spacing: Theme.spacingXS
 
                 Rectangle {
                     width: watchlistBtnText.width + Theme.spacingM
-                    height: 28
-                    radius: Theme.cornerRadiusSmall
+                    height: Theme.iconSize + Theme.spacingXS
+                    radius: Theme.cornerRadius / 2
                     color: !root.showAll ? Theme.primary : Theme.surfaceContainerHigh
 
                     StyledText {
@@ -91,8 +90,8 @@ Item {
 
                 Rectangle {
                     width: allBtnText.width + Theme.spacingM
-                    height: 28
-                    radius: Theme.cornerRadiusSmall
+                    height: Theme.iconSize + Theme.spacingXS
+                    radius: Theme.cornerRadius / 2
                     color: root.showAll ? Theme.primary : Theme.surfaceContainerHigh
 
                     StyledText {
@@ -111,39 +110,11 @@ Item {
                 }
             }
 
-            // Refresh Button
-            Rectangle {
-                Layout.preferredWidth: 32
-                Layout.preferredHeight: 32
-                radius: Theme.cornerRadiusSmall
-                color: todayRefreshMouseArea.containsMouse ? Theme.primaryContainer : "transparent"
-
-                DankIcon {
-                    anchors.centerIn: parent
-                    name: "refresh"
-                    size: 18
-                    color: todayRefreshMouseArea.containsMouse ? Theme.onPrimaryContainer : Theme.surfaceVariantText
-
-                    RotationAnimation on rotation {
-                        running: root.isLoading
-                        from: 0
-                        to: 360
-                        duration: 1000
-                        loops: Animation.Infinite
-                    }
-                }
-
-                MouseArea {
-                    id: todayRefreshMouseArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        if (!root.isLoading) {
-                            Services.AnimeScheduleService.forceRefresh();
-                        }
-                    }
-                }
+            DankActionButton {
+                iconName: "refresh"
+                tooltipText: "Refresh anime list"
+                enabled: !root.isLoading
+                onClicked: Services.AnimeScheduleService.forceRefresh()
             }
         }
 
@@ -167,7 +138,7 @@ Item {
                 DankIcon {
                     anchors.horizontalCenter: parent.horizontalCenter
                     name: "key"
-                    size: 48
+                    size: Theme.iconSizeLarge
                     color: Theme.surfaceVariantText
                 }
 
@@ -189,7 +160,7 @@ Item {
                 DankIcon {
                     anchors.horizontalCenter: parent.horizontalCenter
                     name: "event_busy"
-                    size: 48
+                    size: Theme.iconSizeLarge
                     color: Theme.surfaceVariantText
                 }
 
@@ -210,7 +181,7 @@ Item {
             }
 
             // Today's Anime List
-            ListView {
+            DankListView {
                 id: todayListView
                 anchors.fill: parent
                 visible: todayList.length > 0
@@ -243,11 +214,6 @@ Item {
                     onWatchlistToggled: function(anime) {
                         Services.AnimeScheduleService.toggleWatchlist(anime);
                     }
-                }
-
-                ScrollBar.vertical: ScrollBar {
-                    active: true
-                    policy: ScrollBar.AsNeeded
                 }
             }
         }

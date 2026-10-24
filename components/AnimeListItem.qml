@@ -17,8 +17,9 @@ Rectangle {
 
     signal watchlistToggled(var anime)
 
-    width: parent ? parent.width : 200
-    height: 72
+    readonly property real thumbWidth: Theme.iconSizeLarge + Theme.spacingL
+
+    height: thumbWidth + Theme.spacingS * 3
     color: mouseArea.containsMouse ? Theme.surfaceContainerHigh : "transparent"
     radius: Theme.cornerRadius
 
@@ -29,13 +30,14 @@ Rectangle {
 
         // Anime thumbnail
         Rectangle {
-            Layout.preferredWidth: 48
-            Layout.preferredHeight: 56
-            radius: Theme.cornerRadiusSmall
+            Layout.preferredWidth: root.thumbWidth
+            Layout.fillHeight: true
+            radius: Theme.cornerRadius / 2
             color: Theme.surfaceContainerHighest
             clip: true
 
             Image {
+                id: thumb
                 anchors.fill: parent
                 source: root.imageUrl
                 fillMode: Image.PreserveAspectCrop
@@ -55,9 +57,9 @@ Rectangle {
             DankIcon {
                 anchors.centerIn: parent
                 name: "movie"
-                size: 24
+                size: Theme.iconSize
                 color: Theme.surfaceVariantText
-                visible: parent.children[0].status !== Image.Ready
+                visible: thumb.status !== Image.Ready
             }
         }
 
@@ -65,7 +67,7 @@ Rectangle {
         ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 2
+            spacing: 0
 
             StyledText {
                 Layout.fillWidth: true
@@ -94,42 +96,25 @@ Rectangle {
             }
         }
 
-        // Watchlist button
-        Rectangle {
-            Layout.preferredWidth: 32
-            Layout.preferredHeight: 32
+        DankActionButton {
             Layout.alignment: Qt.AlignVCenter
-            radius: Theme.cornerRadiusSmall
-            color: starMouseArea.containsMouse ? Theme.primaryContainer : "transparent"
             visible: root.showWatchlistButton
-
-            DankIcon {
-                anchors.centerIn: parent
-                name: root.isInWatchlist ? "star" : "star_border"
-                size: 20
-                color: root.isInWatchlist ? Theme.primary : Theme.surfaceVariantText
-            }
-
-            MouseArea {
-                id: starMouseArea
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: root.watchlistToggled(root.anime)
-            }
+            iconName: root.isInWatchlist ? "star" : "star_border"
+            iconColor: root.isInWatchlist ? Theme.primary : Theme.surfaceVariantText
+            tooltipText: root.isInWatchlist ? "Remove from watchlist" : "Add to watchlist"
+            onClicked: root.watchlistToggled(root.anime)
         }
 
         // Time until column
         ColumnLayout {
-            Layout.preferredWidth: 60
             Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
-            spacing: 2
+            spacing: 0
 
             Rectangle {
                 Layout.alignment: Qt.AlignRight
                 Layout.preferredWidth: timeUntilText.width + Theme.spacingM
                 Layout.preferredHeight: timeUntilText.height + Theme.spacingXS
-                radius: Theme.cornerRadiusSmall
+                radius: Theme.cornerRadius / 2
                 color: root.timeUntil === "Aired" ? Theme.surfaceContainerHighest : Theme.primaryContainer
                 visible: root.timeUntil !== ""
 

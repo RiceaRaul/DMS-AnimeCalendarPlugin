@@ -29,7 +29,8 @@ A QuickShell plugin for DankMaterialShell that tracks anime episode releases and
 - [QuickShell](https://github.com/outfoxxed/quickshell)
 - [DankMaterialShell](https://github.com/your-repo/DankMaterialShell)
 - An API token from [animeschedule.net](https://animeschedule.net)
-- `notify-send` (for desktop notifications)
+- `curl` (fetches the timetable)
+- `notify-send` from libnotify (for desktop notifications)
 
 ## Installation
 
@@ -94,10 +95,8 @@ AnimeCalendar/
 
 ## Watchlist Storage
 
-Your watchlist is stored locally at:
-```
-~/.config/quickshell/anime-watchlist.json
-```
+Your watchlist is stored in the plugin settings (DMS `plugin_settings.json`).
+Versions before 1.0.2 kept it in `~/.config/quickshell/anime-watchlist.json`; that file is imported once on first start and can be deleted afterwards.
 
 ## License
 

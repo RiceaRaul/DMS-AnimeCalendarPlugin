@@ -11,8 +11,6 @@ import "./services" as Services
 PluginComponent {
     id: root
 
-    property string displayText: pluginData.displayText || "Hello"
-
     property int todayCount: Services.AnimeScheduleService.watchlistTodayCount
     property bool isLoading: Services.AnimeScheduleService.isLoading
     property string barMode: pluginData.barIndicatorMode || "icon_count"
@@ -40,16 +38,18 @@ PluginComponent {
         return todayCount > 0 ? todayCount + " today" : "";
     }
 
-    // Initialize services
+    property bool watchlistLoaded: false
+    readonly property int tabBarHeight: Theme.iconSize + Theme.spacingM
+
     Component.onCompleted: {
         updateApiToken();
         loadWatchlist();
         configureNotifications();
     }
 
-    // Watch for pluginData changes
     onPluginDataChanged: {
         updateApiToken();
+        loadWatchlist();
         configureNotifications();
     }
 
@@ -73,12 +73,41 @@ PluginComponent {
         }
     }
 
+    // pluginData is empty until pluginService is injected, so wait for it before reading
     function loadWatchlist() {
-        Services.AnimeScheduleService.loadWatchlistFromFile();
+        if (root.watchlistLoaded || !pluginService || !pluginId)
+            return;
+        root.watchlistLoaded = true;
+        const saved = pluginData.watchlist;
+        if (Array.isArray(saved)) {
+            Services.AnimeScheduleService.setWatchlist(saved);
+            return;
+        }
+        legacyWatchlist.path = Quickshell.env("HOME") + "/.config/quickshell/anime-watchlist.json";
     }
 
     function saveWatchlist() {
-        pluginData.watchlist = Services.AnimeScheduleService.watchlist;
+        if (!pluginService || !pluginId)
+            return;
+        pluginService.savePluginData(pluginId, "watchlist", Services.AnimeScheduleService.watchlist);
+    }
+
+    // One-time read-only import of the watchlist file used by versions before 1.0.2
+    FileView {
+        id: legacyWatchlist
+        printErrors: false
+        onLoaded: {
+            let list;
+            try {
+                list = JSON.parse(text());
+            } catch (e) {
+                return;
+            }
+            if (!Array.isArray(list))
+                return;
+            Services.AnimeScheduleService.setWatchlist(list.filter(route => typeof route === "string"));
+            root.saveWatchlist();
+        }
     }
 
     function configureNotifications() {
@@ -162,7 +191,7 @@ PluginComponent {
                     //Tab Bar
                     Row {
                         width: parent.width
-                        height: 40
+                        height: root.tabBarHeight
                         spacing: 0
 
                         Repeater {
@@ -191,7 +220,7 @@ PluginComponent {
                                 Rectangle {
                                     anchors.bottom: parent.bottom
                                     width: parent.width
-                                    height: 2
+                                    height: Theme.spacingXS / 2
                                     color: Theme.primary
                                     visible: tabBar.currentIndex === index
                                 }
@@ -203,7 +232,7 @@ PluginComponent {
                     StackLayout {
                         id: tabBar
                         width: parent.width
-                        height: parent.height - 40
+                        height: parent.height - root.tabBarHeight
                         currentIndex: 0
 
                         AnimeCalendarComponents.SeasonTab {

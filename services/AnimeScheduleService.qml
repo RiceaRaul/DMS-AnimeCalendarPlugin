@@ -27,12 +27,10 @@ Singleton {
     property var todayAnime: []
     property int todayCount: 0
 
-    // Watchlist (local storage)
+    // Watchlist, persisted in plugin settings by Widget.qml
     property var watchlist: []
     property var watchlistTodayAnime: []
     property int watchlistTodayCount: 0
-    readonly property string watchlistDir: Quickshell.env("HOME") + "/.config/quickshell"
-    readonly property string watchlistFile: watchlistDir + "/anime-watchlist.json"
 
     // Rate limiting
     property int rateLimitRemaining: 120
@@ -45,6 +43,9 @@ Singleton {
 
     // Update interval (default 15 minutes)
     property int updateInterval: 900000
+
+    // "sub", "dub" or "raw"
+    property string timetableType: "sub"
 
     readonly property var curlBaseCmd: ["curl", "-sS", "--fail", "--connect-timeout", "10", "--max-time", "30", "--compressed"]
 
@@ -75,13 +76,18 @@ Singleton {
     }
 
     function getTimetableUrl(type) {
-        // type can be: "sub", "dub", "raw", or empty for all
-        const endpoint = type ? "/timetables/" + type : "/timetables/sub";
-        return baseUrl + endpoint;
+        return baseUrl + "/timetables/" + (type || "sub");
     }
 
     function refresh() {
-        fetchTimetable("sub");
+        fetchTimetable(root.timetableType);
+    }
+
+    function setTimetableType(type) {
+        if (!type || type === root.timetableType)
+            return;
+        root.timetableType = type;
+        forceRefresh();
     }
 
     function fetchTimetable(type) {
@@ -106,14 +112,13 @@ Singleton {
         root.hasError = false;
         root.errorMessage = "";
 
-        const url = getTimetableUrl(type);
-        const authHeader = "Authorization: Bearer " + apiToken;
-
+        // "-H @-" reads the auth header from stdin so the token never shows up in ps or /proc
         timetableFetcher.command = curlBaseCmd.concat([
-            "-H", authHeader,
+            "-H", "@-",
             "-H", "Accept: application/json",
-            url
+            getTimetableUrl(type)
         ]);
+        timetableFetcher.stdinEnabled = true;
         timetableFetcher.running = true;
     }
 
@@ -212,7 +217,6 @@ Singleton {
         root.watchlist = newList;
         updateWatchlistToday();
         watchlistModified();
-        saveWatchlistToFile();
     }
 
     function setWatchlist(list) {
@@ -240,14 +244,6 @@ Singleton {
         root.watchlistTodayCount = result.length;
     }
 
-    function saveWatchlistToFile() {
-        watchlistSaver.running = true;
-    }
-
-    function loadWatchlistFromFile() {
-        watchlistLoader.running = true;
-    }
-
     function filterTodayAnime() {
         const today = [];
         for (let i = 0; i < timetable.length; i++) {
@@ -273,6 +269,12 @@ Singleton {
     Process {
         id: timetableFetcher
         running: false
+        stdinEnabled: true
+
+        onStarted: {
+            write("Authorization: Bearer " + root.apiToken + "\n");
+            stdinEnabled = false;
+        }
 
         stdout: StdioCollector {
             onStreamFinished: {
@@ -369,38 +371,5 @@ Singleton {
                 root._tokenFromFile = "";
             }
         }
-    }
-
-    Process {
-        id: watchlistSaver
-        running: false
-        command: [
-            "bash",
-            "-c",
-            "mkdir -p " + root.watchlistDir + " && echo '" + JSON.stringify(root.watchlist) + "' > " + root.watchlistFile
-        ]
-    }
-
-    Process {
-        id: watchlistLoader
-        running: false
-        command: ["cat", root.watchlistFile]
-
-        stdout: StdioCollector {
-            onStreamFinished: {
-                var raw = text.trim();
-                if (raw) {
-                    try {
-                        root.watchlist = JSON.parse(raw);
-                    } catch (e) {
-                        root.watchlist = [];
-                    }
-                }
-            }
-        }
-    }
-
-    Component.onCompleted: {
-        loadWatchlistFromFile();
     }
 }

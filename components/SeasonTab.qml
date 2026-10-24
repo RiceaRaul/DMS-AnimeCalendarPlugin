@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
 import qs.Common
 import qs.Widgets
@@ -10,7 +9,7 @@ Item {
     anchors.fill: parent
 
     property string searchText: ""
-    property string filterType: "all"
+    readonly property var typeLabels: ["Sub", "Dub", "Raw"]
     property bool isLoading: Services.AnimeScheduleService.isLoading
     property var animeList: Services.AnimeScheduleService.timetable
 
@@ -35,100 +34,33 @@ Item {
         anchors.margins: Theme.spacingM
         spacing: Theme.spacingM
 
-        // 1. Search, Filter Row, and Refresh Button
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 44
             spacing: Theme.spacingS
 
-            TextField {
-                id: searchField
+            DankTextField {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 44
-
                 placeholderText: "Search anime..."
-                verticalAlignment: TextInput.AlignVCenter
-                leftPadding: Theme.spacingL
-
-                color: Theme.surfaceText
-                placeholderTextColor: Theme.surfaceVariantText
-                font.pixelSize: Theme.fontSizeMedium
-
+                leftIconName: "search"
+                showClearButton: true
                 onTextChanged: root.searchText = text
-
-                background: Rectangle {
-                    radius: Theme.cornerRadius
-                    color: Theme.surfaceContainerHigh
-                    border.color: searchField.activeFocus ? Theme.primary : Theme.outline
-                    border.width: 1
-                }
             }
 
-            ComboBox {
-                id: typeFilter
-                Layout.preferredWidth: 100
-                Layout.preferredHeight: 44
-
-                model: ["All", "SUB", "DUB", "RAW"]
-
-                contentItem: StyledText {
-                    text: typeFilter.displayText
-                    color: Theme.surfaceText
-                    verticalAlignment: Text.AlignVCenter
-                    horizontalAlignment: Text.AlignHCenter
+            DankDropdown {
+                dropdownWidth: Theme.iconSizeLarge * 3
+                options: root.typeLabels
+                currentValue: {
+                    const type = Services.AnimeScheduleService.timetableType;
+                    return type.charAt(0).toUpperCase() + type.slice(1);
                 }
-
-                background: Rectangle {
-                    radius: Theme.cornerRadius
-                    color: Theme.surfaceContainerHigh
-                    border.color: Theme.outline
-                    border.width: 1
-                }
-
-                onCurrentTextChanged: {
-                    root.filterType = currentText.toLowerCase();
-                }
+                onValueChanged: value => Services.AnimeScheduleService.setTimetableType(value.toLowerCase())
             }
 
-            // Refresh Button
-            Rectangle {
-                Layout.preferredWidth: 44
-                Layout.preferredHeight: 44
-                radius: Theme.cornerRadius
-                color: refreshMouseArea.containsMouse ? Theme.primaryContainer : Theme.surfaceContainerHigh
-                border.color: Theme.outline
-                border.width: 1
-
-                DankIcon {
-                    anchors.centerIn: parent
-                    name: "refresh"
-                    size: 20
-                    color: refreshMouseArea.containsMouse ? Theme.onPrimaryContainer : Theme.surfaceText
-
-                    RotationAnimation on rotation {
-                        running: root.isLoading
-                        from: 0
-                        to: 360
-                        duration: 1000
-                        loops: Animation.Infinite
-                    }
-                }
-
-                MouseArea {
-                    id: refreshMouseArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        if (!root.isLoading) {
-                            Services.AnimeScheduleService.forceRefresh();
-                        }
-                    }
-                }
-
-                ToolTip.visible: refreshMouseArea.containsMouse
-                ToolTip.text: "Refresh anime list"
-                ToolTip.delay: 500
+            DankActionButton {
+                iconName: "refresh"
+                tooltipText: "Refresh anime list"
+                enabled: !root.isLoading
+                onClicked: Services.AnimeScheduleService.forceRefresh()
             }
         }
 
@@ -158,7 +90,7 @@ Item {
                 DankIcon {
                     anchors.horizontalCenter: parent.horizontalCenter
                     name: "key"
-                    size: 48
+                    size: Theme.iconSizeLarge
                     color: Theme.surfaceVariantText
                 }
 
@@ -187,7 +119,7 @@ Item {
                 DankIcon {
                     anchors.horizontalCenter: parent.horizontalCenter
                     name: "error"
-                    size: 48
+                    size: Theme.iconSizeLarge
                     color: Theme.error
                 }
 
@@ -237,7 +169,7 @@ Item {
             }
 
             // Anime List
-            ListView {
+            DankListView {
                 id: animeListView
                 anchors.fill: parent
                 visible: filteredList.length > 0
@@ -271,11 +203,6 @@ Item {
                         Services.AnimeScheduleService.toggleWatchlist(anime);
                     }
                 }
-
-                ScrollBar.vertical: ScrollBar {
-                    active: true
-                    policy: ScrollBar.AsNeeded
-                }
             }
 
             // Results count
@@ -286,7 +213,7 @@ Item {
                 visible: filteredList.length > 0 && searchText.length > 0
                 width: countText.width + Theme.spacingM
                 height: countText.height + Theme.spacingXS
-                radius: Theme.cornerRadiusSmall
+                radius: Theme.cornerRadius / 2
                 color: Theme.surfaceContainerHighest
                 opacity: 0.9
 

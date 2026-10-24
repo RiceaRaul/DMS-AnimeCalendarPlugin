@@ -179,28 +179,9 @@ PluginSettings {
         color: Theme.surfaceText
     }
 
-    Rectangle {
-        width: parent.width
-        height: 40
-        radius: Theme.cornerRadius
-        color: testMouseArea.containsMouse ? Theme.primaryContainer : Theme.surfaceContainerHigh
-        border.color: Theme.primary
-        border.width: 1
-
-        StyledText {
-            anchors.centerIn: parent
-            text: "Test Notification"
-            color: Theme.primary
-        }
-
-        MouseArea {
-            id: testMouseArea
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: {
-                Services.NotificationService.sendNotification("Anime Calendar Test", "Notifications are working!");
-            }
-        }
+    DankButton {
+        text: "Test Notification"
+        iconName: "notifications"
+        onClicked: Services.NotificationService.sendNotification("Anime Calendar Test", "Notifications are working!")
     }
 }

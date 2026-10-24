@@ -1,6 +1,17 @@
 # Changelog
 
-## Unreleased
+## v1.0.2
+
+### Security
+- The watchlist is no longer written with a `bash -c` command built from API data. A show route containing a quote could run shell commands.
+- The API token is passed to curl on stdin instead of the command line, so other local users can't read it from `ps` or `/proc`.
+
+### Changes
+- Watchlist is stored in plugin settings instead of `~/.config/quickshell/anime-watchlist.json`. The old file is imported once.
+- The Sub/Dub/Raw selector in the Season tab now switches the timetable. It previously did nothing.
+- UI uses DMS widgets (DankTextField, DankDropdown, DankActionButton, DankButton, DankListView) and Theme sizes instead of raw Qt controls and fixed pixel values.
+- Fixed corner radii that used a Theme token that doesn't exist and rendered square.
+- Manifest lists `curl` and `notify-send` as dependencies and mentions the animeschedule.net API token.
 
 ### Features
 - API token can now be loaded from a file via the `apiTokenPath` setting. When set, file contents (trimmed) take precedence over the inline `apiToken`. Enables declarative configs (e.g. NixOS) without storing secrets in the config tree.

@@ -16,7 +16,7 @@ Column {
     DankIcon {
         anchors.horizontalCenter: parent.horizontalCenter
         name: root.iconName
-        size: 64
+        size: Theme.iconSizeLarge
         color: Theme.surfaceVariantText
         opacity: 0.5
     }
