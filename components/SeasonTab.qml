@@ -1,15 +1,15 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.Common
-import qs.Widgets
+import qs.DCommon.Widgets
 import "../services" as Services
 
 Item {
     id: root
-    anchors.fill: parent
 
     property string searchText: ""
-    readonly property var typeLabels: ["Sub", "Dub", "Raw"]
+    readonly property var typeValues: ["sub", "dub", "raw"]
+    readonly property var typeLabels: [I18n.trFor("animeCalendar", "Sub"), I18n.trFor("animeCalendar", "Dub"), I18n.trFor("animeCalendar", "Raw")]
     property bool isLoading: Services.AnimeScheduleService.isLoading
     property var animeList: Services.AnimeScheduleService.timetable
 
@@ -38,27 +38,24 @@ Item {
             Layout.fillWidth: true
             spacing: Theme.spacingS
 
-            DankTextField {
+            DTextField {
                 Layout.fillWidth: true
-                placeholderText: "Search anime..."
+                placeholderText: I18n.trFor("animeCalendar", "Search anime...")
                 leftIconName: "search"
                 showClearButton: true
                 onTextChanged: root.searchText = text
             }
 
-            DankDropdown {
+            DDropdown {
                 dropdownWidth: Theme.iconSizeLarge * 3
                 options: root.typeLabels
-                currentValue: {
-                    const type = Services.AnimeScheduleService.timetableType;
-                    return type.charAt(0).toUpperCase() + type.slice(1);
-                }
-                onValueChanged: value => Services.AnimeScheduleService.setTimetableType(value.toLowerCase())
+                currentValue: root.typeLabels[Math.max(0, root.typeValues.indexOf(Services.AnimeScheduleService.timetableType))]
+                onValueChanged: value => Services.AnimeScheduleService.setTimetableType(root.typeValues[root.typeLabels.indexOf(value)])
             }
 
-            DankActionButton {
+            DActionButton {
                 iconName: "refresh"
-                tooltipText: "Refresh anime list"
+                tooltipText: I18n.trFor("animeCalendar", "Refresh anime list")
                 enabled: !root.isLoading
                 onClicked: Services.AnimeScheduleService.forceRefresh()
             }
@@ -87,7 +84,7 @@ Item {
                 spacing: Theme.spacingM
                 visible: Services.AnimeScheduleService.apiToken === ""
 
-                DankIcon {
+                DIcon {
                     anchors.horizontalCenter: parent.horizontalCenter
                     name: "key"
                     size: Theme.iconSizeLarge
@@ -96,7 +93,7 @@ Item {
 
                 StyledText {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: "API Token Required"
+                    text: I18n.trFor("animeCalendar", "API Token Required")
                     font.pixelSize: Theme.fontSizeMedium
                     font.weight: Font.Medium
                     color: Theme.surfaceText
@@ -104,7 +101,7 @@ Item {
 
                 StyledText {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: "Configure your token in plugin settings"
+                    text: I18n.trFor("animeCalendar", "Configure your token in plugin settings")
                     font.pixelSize: Theme.fontSizeSmall
                     color: Theme.surfaceVariantText
                 }
@@ -116,7 +113,7 @@ Item {
                 spacing: Theme.spacingM
                 visible: Services.AnimeScheduleService.hasError && !root.isLoading
 
-                DankIcon {
+                DIcon {
                     anchors.horizontalCenter: parent.horizontalCenter
                     name: "error"
                     size: Theme.iconSizeLarge
@@ -125,7 +122,7 @@ Item {
 
                 StyledText {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: "Error loading data"
+                    text: I18n.trFor("animeCalendar", "Error loading data")
                     font.pixelSize: Theme.fontSizeMedium
                     font.weight: Font.Medium
                     color: Theme.surfaceText
@@ -153,7 +150,7 @@ Item {
                     StyledText {
                         id: retryText
                         anchors.centerIn: parent
-                        text: "Retry"
+                        text: I18n.trFor("animeCalendar", "Retry")
                         font.pixelSize: Theme.fontSizeSmall
                         color: Theme.primary
                     }
@@ -169,7 +166,7 @@ Item {
             }
 
             // Anime List
-            DankListView {
+            DListView {
                 id: animeListView
                 anchors.fill: parent
                 visible: filteredList.length > 0
@@ -181,17 +178,18 @@ Item {
                 delegate: AnimeListItem {
                     width: animeListView.width
                     anime: modelData
-                    title: modelData.title || modelData.route || "Unknown"
-                    episodeNumber: modelData.episodeNumber ? "Episode " + modelData.episodeNumber : ""
+                    title: modelData.title || modelData.route || I18n.trFor("animeCalendar", "Unknown")
+                    episodeNumber: modelData.episodeNumber ? I18n.trFor("animeCalendar", "Episode %1").arg(modelData.episodeNumber) : ""
                     airTime: {
                         const date = Services.AnimeScheduleService.parseDate(modelData.episodeDate);
                         if (!date) return "";
-                        return Services.AnimeScheduleService.formatDate(date) + " at " + Services.AnimeScheduleService.formatTime(date);
+                        return Services.AnimeScheduleService.I18n.trFor("animeCalendar", "%1 at %2").arg(Services.AnimeScheduleService.formatDate(date)).arg(Services.AnimeScheduleService.formatTime(date));
                     }
                     timeUntil: {
                         const date = Services.AnimeScheduleService.parseDate(modelData.episodeDate);
                         return Services.AnimeScheduleService.getTimeUntil(date);
                     }
+                    aired: Services.AnimeScheduleService.hasAired(Services.AnimeScheduleService.parseDate(modelData.episodeDate))
                     imageUrl: {
                         if (modelData.imageVersionRoute) {
                             return Services.AnimeScheduleService.getImageUrl(modelData.imageVersionRoute);
@@ -213,14 +211,14 @@ Item {
                 visible: filteredList.length > 0 && searchText.length > 0
                 width: countText.width + Theme.spacingM
                 height: countText.height + Theme.spacingXS
-                radius: Theme.cornerRadius / 2
+                radius: Theme.cornerRadiusS
                 color: Theme.surfaceContainerHighest
                 opacity: 0.9
 
                 StyledText {
                     id: countText
                     anchors.centerIn: parent
-                    text: filteredList.length + " results"
+                    text: I18n.trFor("animeCalendar", "%1 results").arg(filteredList.length)
                     font.pixelSize: Theme.fontSizeSmall
                     color: Theme.surfaceVariantText
                 }

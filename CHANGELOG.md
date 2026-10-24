@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.0.0
+
+Dux Shell 2.0 version. Requires DMS/Dux Shell 2.0 or newer; use the `dms-variant` branch for older shells.
+
+### Changes
+- Uses the shared `qs.DCommon.Widgets` components (DIcon, DTextField, DDropdown, DActionButton, DButton, DButtonGroup, DTabBar, DListView, DSpinner).
+- All user-facing text goes through `I18n.trFor`, so the plugin can ship translations.
+- Bar pill follows the bar or dock size and widget colors.
+- The countdown in the bar now updates every minute; the clock stops while the bar is hidden.
+
 ## v1.0.2
 
 ### Security

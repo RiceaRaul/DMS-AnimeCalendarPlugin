@@ -1,7 +1,7 @@
 import QtQuick
 import qs.Common
 import qs.Modules.Plugins
-import qs.Widgets
+import qs.DCommon.Widgets
 import Quickshell.Io
 import "./services" as Services
 
@@ -11,7 +11,7 @@ PluginSettings {
 
     StyledText {
         width: parent.width
-        text: "Anime Calendar"
+        text: I18n.trFor("animeCalendar", "Anime Calendar")
         font.pixelSize: Theme.fontSizeLarge
         font.weight: Font.Bold
         color: Theme.surfaceText
@@ -19,7 +19,7 @@ PluginSettings {
 
     StyledText {
         width: parent.width
-        text: "Track and get notified about anime episode releases"
+        text: I18n.trFor("animeCalendar", "Track and get notified about anime episode releases")
         font.pixelSize: Theme.fontSizeSmall
         color: Theme.surfaceVariantText
         wrapMode: Text.WordWrap
@@ -27,14 +27,14 @@ PluginSettings {
 
     Rectangle {
         width: parent.width
-        height: 1
+        height: Theme.outlineWidth
         color: Theme.outline
         opacity: 0.3
     }
 
     StyledText {
         width: parent.width
-        text: "API Configuration"
+        text: I18n.trFor("animeCalendar", "API Configuration")
         font.pixelSize: Theme.fontSizeMedium
         font.weight: Font.Bold
         color: Theme.surfaceText
@@ -42,22 +42,22 @@ PluginSettings {
 
     StringSetting {
         settingKey: "apiTokenPath"
-        label: "API Token File Path"
-        description: "Path to a file containing the API token (takes precedence over the inline token below). Useful for declarative configs like NixOS."
+        label: I18n.trFor("animeCalendar", "API Token File Path")
+        description: I18n.trFor("animeCalendar", "Path to a file containing the API token (takes precedence over the inline token below). Useful for declarative configs like NixOS.")
         placeholder: "/run/secrets/animeschedule_token"
         defaultValue: ""
     }
 
     StringSetting {
         settingKey: "apiToken"
-        label: "API Token"
-        description: "Get your token from animeschedule.net. Ignored if a token file path is set."
-        placeholder: "Enter API token"
+        label: I18n.trFor("animeCalendar", "API Token")
+        description: I18n.trFor("animeCalendar", "Get your token from animeschedule.net. Ignored if a token file path is set.")
+        placeholder: I18n.trFor("animeCalendar", "Enter API token")
         defaultValue: ""
     }
     Rectangle {
         width: parent.width
-        height: 1
+        height: Theme.outlineWidth
         color: Theme.outline
         opacity: 0.3
     }
@@ -65,26 +65,26 @@ PluginSettings {
     // Display Settings
     StyledText {
         width: parent.width
-        text: "Display Settings"
+        text: I18n.trFor("animeCalendar", "Display Settings")
         font.pixelSize: Theme.fontSizeMedium
         font.weight: Font.Bold
         color: Theme.surfaceText
     }
     SelectionSetting {
         settingKey: "barIndicatorMode"
-        label: "Bar Indicator"
-        description: "How to display the widget in the bar"
+        label: I18n.trFor("animeCalendar", "Bar Indicator")
+        description: I18n.trFor("animeCalendar", "How to display the widget in the bar")
         options: [
             {
-                label: "Icon Only",
+                label: I18n.trFor("animeCalendar", "Icon Only"),
                 value: "icon_only"
             },
             {
-                label: "Icon + Count",
+                label: I18n.trFor("animeCalendar", "Icon + Count"),
                 value: "icon_count"
             },
             {
-                label: "Icon + Countdown",
+                label: I18n.trFor("animeCalendar", "Icon + Countdown"),
                 value: "icon_time"
             }
         ]
@@ -93,7 +93,7 @@ PluginSettings {
   
     Rectangle {
         width: parent.width
-        height: 1
+        height: Theme.outlineWidth
         color: Theme.outline
         opacity: 0.3
     }
@@ -101,7 +101,7 @@ PluginSettings {
     // Notifications
     StyledText {
         width: parent.width
-        text: "Notifications"
+        text: I18n.trFor("animeCalendar", "Notifications")
         font.pixelSize: Theme.fontSizeMedium
         font.weight: Font.Bold
         color: Theme.surfaceText
@@ -109,37 +109,37 @@ PluginSettings {
 
     ToggleSetting {
         settingKey: "enableInstantNotifications"
-        label: "Instant Notifications"
-        description: "Notify when episodes from your watchlist air"
+        label: I18n.trFor("animeCalendar", "Instant Notifications")
+        description: I18n.trFor("animeCalendar", "Notify when episodes from your watchlist air")
         defaultValue: true
     }
 
     ToggleSetting {
         settingKey: "enableDailyDigest"
-        label: "Daily Digest"
-        description: "Morning summary of today's episodes"
+        label: I18n.trFor("animeCalendar", "Daily Digest")
+        description: I18n.trFor("animeCalendar", "Morning summary of today's episodes")
         defaultValue: true
     }
 
     StringSetting {
         settingKey: "digestTime"
-        label: "Digest Time"
-        description: "Time for daily digest (HH:MM format)"
+        label: I18n.trFor("animeCalendar", "Digest Time")
+        description: I18n.trFor("animeCalendar", "Time for daily digest (HH:MM format)")
         placeholder: "08:00"
         defaultValue: "08:00"
     }
 
     StringSetting {
         settingKey: "notificationIcon"
-        label: "Notification Icon"
-        description: "Icon name or path (e.g., x-office-calendar, video-x-generic, /path/to/icon.png)"
+        label: I18n.trFor("animeCalendar", "Notification Icon")
+        description: I18n.trFor("animeCalendar", "Icon name or path (e.g., x-office-calendar, video-x-generic, /path/to/icon.png)")
         placeholder: "x-office-calendar"
         defaultValue: "x-office-calendar"
     }
 
     Rectangle {
         width: parent.width
-        height: 1
+        height: Theme.outlineWidth
         color: Theme.outline
         opacity: 0.3
     }
@@ -147,7 +147,7 @@ PluginSettings {
     // Data Settings
     StyledText {
         width: parent.width
-        text: "Data"
+        text: I18n.trFor("animeCalendar", "Data")
         font.pixelSize: Theme.fontSizeMedium
         font.weight: Font.Bold
         color: Theme.surfaceText
@@ -155,8 +155,8 @@ PluginSettings {
 
     SliderSetting {
         settingKey: "refreshInterval"
-        label: "Refresh Interval"
-        description: "How often to check for new episodes"
+        label: I18n.trFor("animeCalendar", "Refresh Interval")
+        description: I18n.trFor("animeCalendar", "How often to check for new episodes")
         defaultValue: 15
         minimum: 5
         maximum: 60
@@ -165,7 +165,7 @@ PluginSettings {
 
     Rectangle {
         width: parent.width
-        height: 1
+        height: Theme.outlineWidth
         color: Theme.outline
         opacity: 0.3
     }
@@ -173,15 +173,15 @@ PluginSettings {
     // Test Notifications
     StyledText {
         width: parent.width
-        text: "Test"
+        text: I18n.trFor("animeCalendar", "Test")
         font.pixelSize: Theme.fontSizeMedium
         font.weight: Font.Bold
         color: Theme.surfaceText
     }
 
-    DankButton {
-        text: "Test Notification"
+    DButton {
+        text: I18n.trFor("animeCalendar", "Test Notification")
         iconName: "notifications"
-        onClicked: Services.NotificationService.sendNotification("Anime Calendar Test", "Notifications are working!")
+        onClicked: Services.NotificationService.sendNotification(I18n.trFor("animeCalendar", "Anime Calendar Test"), I18n.trFor("animeCalendar", "Notifications are working!"))
     }
 }

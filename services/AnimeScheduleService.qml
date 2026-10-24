@@ -4,6 +4,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.Common
 
 Singleton {
     id: root
@@ -93,7 +94,7 @@ Singleton {
     function fetchTimetable(type) {
         if (!apiToken) {
             root.hasError = true;
-            root.errorMessage = "API token not configured";
+            root.errorMessage = I18n.trFor("animeCalendar", "API token not configured");
             errorOccurred(root.errorMessage);
             return;
         }
@@ -139,7 +140,7 @@ Singleton {
     function handleFailure(message) {
         root.retryAttempts++;
         root.hasError = true;
-        root.errorMessage = message || "Failed to fetch data";
+        root.errorMessage = message || I18n.trFor("animeCalendar", "Failed to fetch data");
         root.isLoading = false;
 
         if (root.retryAttempts < root.maxRetryAttempts) {
@@ -175,24 +176,43 @@ Singleton {
                date.getDate() === today.getDate();
     }
 
+    // The timetable only holds this week's episode; an aired weekly show airs again 7 days later
+    function nextAiring(anime) {
+        const date = parseDate(anime.episodeDate);
+        const episode = Number(anime.episodeNumber) || 0;
+        if (!date || date.getTime() >= Date.now())
+            return { date: date, episode: episode };
+        const total = Number(anime.episodes) || 0;
+        if (total > 0 && episode >= total)
+            return { date: date, episode: episode };
+        return {
+            date: new Date(date.getTime() + 7 * 24 * 60 * 60 * 1000),
+            episode: episode > 0 ? episode + 1 : 0
+        };
+    }
+
+    function hasAired(date) {
+        return !!date && date.getTime() < Date.now();
+    }
+
     function getTimeUntil(date) {
         if (!date) return "";
         const now = new Date();
         const diff = date.getTime() - now.getTime();
 
-        if (diff < 0) return "Aired";
+        if (diff < 0) return I18n.trFor("animeCalendar", "Aired");
 
         const hours = Math.floor(diff / (1000 * 60 * 60));
         const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
         if (hours > 24) {
             const days = Math.floor(hours / 24);
-            return days + "d " + (hours % 24) + "h";
+            return I18n.trFor("animeCalendar", "%1d %2h").arg(days).arg(hours % 24);
         }
         if (hours > 0) {
-            return hours + "h " + minutes + "m";
+            return I18n.trFor("animeCalendar", "%1h %2m").arg(hours).arg(minutes);
         }
-        return minutes + "m";
+        return I18n.trFor("animeCalendar", "%1m").arg(minutes);
     }
 
     function getImageUrl(route) {
@@ -281,7 +301,7 @@ Singleton {
                 const raw = text.trim();
 
                 if (!raw) {
-                    root.handleFailure("Empty response from API");
+                    root.handleFailure(I18n.trFor("animeCalendar", "Empty response from API"));
                     return;
                 }
 
@@ -297,7 +317,7 @@ Singleton {
                 }
 
                 if (!raw.startsWith("[")) {
-                    root.handleFailure("Invalid response format");
+                    root.handleFailure(I18n.trFor("animeCalendar", "Invalid response format"));
                     return;
                 }
 
@@ -315,14 +335,14 @@ Singleton {
                     root.timetableUpdated();
 
                 } catch (e) {
-                    root.handleFailure("Failed to parse response: " + e.message);
+                    root.handleFailure(I18n.trFor("animeCalendar", "Failed to parse response: %1").arg(e.message));
                 }
             }
         }
 
         onExited: exitCode => {
             if (exitCode !== 0) {
-                root.handleFailure("Request failed with exit code: " + exitCode);
+                root.handleFailure(I18n.trFor("animeCalendar", "Request failed with exit code: %1").arg(exitCode));
             }
         }
     }
@@ -367,7 +387,7 @@ Singleton {
         onExited: exitCode => {
             if (exitCode !== 0) {
                 root.hasError = true;
-                root.errorMessage = "Failed to read API token file: " + root.apiTokenPath;
+                root.errorMessage = I18n.trFor("animeCalendar", "Failed to read API token file: %1").arg(root.apiTokenPath);
                 root._tokenFromFile = "";
             }
         }

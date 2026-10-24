@@ -1,16 +1,17 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.Common
-import qs.Widgets
+import qs.DCommon.Widgets
 
 Rectangle {
     id: root
 
     property var anime: ({})
-    property string title: anime.title || anime.route || "Unknown"
-    property string episodeNumber: anime.episodeNumber ? "Ep " + anime.episodeNumber : ""
+    property string title: anime.title || anime.route || I18n.trFor("animeCalendar", "Unknown")
+    property string episodeNumber: ""
     property string airTime: ""
     property string timeUntil: ""
+    property bool aired: false
     property string imageUrl: ""
     property bool isInWatchlist: false
     property bool showWatchlistButton: true
@@ -32,7 +33,7 @@ Rectangle {
         Rectangle {
             Layout.preferredWidth: root.thumbWidth
             Layout.fillHeight: true
-            radius: Theme.cornerRadius / 2
+            radius: Theme.cornerRadiusS
             color: Theme.surfaceContainerHighest
             clip: true
 
@@ -54,7 +55,7 @@ Rectangle {
                 }
             }
 
-            DankIcon {
+            DIcon {
                 anchors.centerIn: parent
                 name: "movie"
                 size: Theme.iconSize
@@ -67,7 +68,7 @@ Rectangle {
         ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 0
+            spacing: Theme.spacingXXS
 
             StyledText {
                 Layout.fillWidth: true
@@ -96,26 +97,26 @@ Rectangle {
             }
         }
 
-        DankActionButton {
+        DActionButton {
             Layout.alignment: Qt.AlignVCenter
             visible: root.showWatchlistButton
             iconName: root.isInWatchlist ? "star" : "star_border"
             iconColor: root.isInWatchlist ? Theme.primary : Theme.surfaceVariantText
-            tooltipText: root.isInWatchlist ? "Remove from watchlist" : "Add to watchlist"
+            tooltipText: root.isInWatchlist ? I18n.trFor("animeCalendar", "Remove from watchlist") : I18n.trFor("animeCalendar", "Add to watchlist")
             onClicked: root.watchlistToggled(root.anime)
         }
 
         // Time until column
         ColumnLayout {
             Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
-            spacing: 0
+            spacing: Theme.spacingXXS
 
             Rectangle {
                 Layout.alignment: Qt.AlignRight
                 Layout.preferredWidth: timeUntilText.width + Theme.spacingM
                 Layout.preferredHeight: timeUntilText.height + Theme.spacingXS
-                radius: Theme.cornerRadius / 2
-                color: root.timeUntil === "Aired" ? Theme.surfaceContainerHighest : Theme.primaryContainer
+                radius: Theme.cornerRadiusS
+                color: root.aired ? Theme.surfaceContainerHighest : Theme.primaryContainer
                 visible: root.timeUntil !== ""
 
                 StyledText {
@@ -124,7 +125,7 @@ Rectangle {
                     text: root.timeUntil
                     font.pixelSize: Theme.fontSizeSmall
                     font.weight: Font.Medium
-                    color: root.timeUntil === "Aired" ? Theme.surfaceVariantText : Theme.onPrimaryContainer
+                    color: root.aired ? Theme.surfaceVariantText : Theme.onPrimaryContainer
                 }
             }
         }

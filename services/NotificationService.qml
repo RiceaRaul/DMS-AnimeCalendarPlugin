@@ -4,6 +4,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.Common
 
 Singleton {
     id: root
@@ -41,7 +42,7 @@ Singleton {
     }
 
     function sendNotification(title, body) {
-        notificationProcess.command = ["notify-send", "-a", "Anime Calendar", "-i", notificationIcon, title, body];
+        notificationProcess.command = ["notify-send", "-a", I18n.trFor("animeCalendar", "Anime Calendar"), "-i", notificationIcon, title, body];
         notificationProcess.running = true;
         notificationSent(title, body);
     }
@@ -67,16 +68,16 @@ Singleton {
     function sendDailyDigest() {
         var count = animeService.watchlistTodayCount;
         if (count === 0) {
-            sendNotification("Anime Calendar", "No watchlist anime airing today");
+            sendNotification(I18n.trFor("animeCalendar", "Anime Calendar"), I18n.trFor("animeCalendar", "No watchlist anime airing today"));
         } else {
             var list = animeService.watchlistTodayAnime;
             var titles = [];
             for (var i = 0; i < Math.min(list.length, 3); i++) {
                 titles.push(list[i].title || list[i].route);
             }
-            var msg = count + " anime today: " + titles.join(", ");
+            var msg = I18n.trFor("animeCalendar", "%1 anime today: %2").arg(count).arg(titles.join(", "));
             if (count > 3) msg += "...";
-            sendNotification("Anime Calendar - Daily Digest", msg);
+            sendNotification(I18n.trFor("animeCalendar", "Anime Calendar - Daily Digest"), msg);
         }
     }
 
@@ -134,8 +135,8 @@ Singleton {
             // Notify if within 2 minutes of air time and not notified
             if (diff <= 120000 && !notifiedAnime[key]) {
                 sendNotification(
-                    "Anime Airing Now!",
-                    (anime.title || anime.route) + " - Episode " + (anime.episodeNumber || "?")
+                    I18n.trFor("animeCalendar", "Anime Airing Now!"),
+                    I18n.trFor("animeCalendar", "%1 - Episode %2").arg(anime.title || anime.route).arg(anime.episodeNumber || "?")
                 );
                 notifiedAnime[key] = true;
             }

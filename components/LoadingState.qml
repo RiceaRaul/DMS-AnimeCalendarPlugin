@@ -1,6 +1,6 @@
 import QtQuick
 import qs.Common
-import qs.Widgets
+import qs.DCommon.Widgets
 
 Column {
     id: root
@@ -9,24 +9,14 @@ Column {
     spacing: Theme.spacingL
     anchors.centerIn: parent
 
-    DankIcon {
+    DSpinner {
         anchors.horizontalCenter: parent.horizontalCenter
-        name: "progress_activity"
         size: Theme.iconSizeLarge
-        color: Theme.primary
-
-        RotationAnimation on rotation {
-            running: root.visible
-            from: 0
-            to: 360
-            duration: 1000
-            loops: Animation.Infinite
-        }
     }
 
     StyledText {
         anchors.horizontalCenter: parent.horizontalCenter
-        text: "Loading anime data..."
+        text: I18n.trFor("animeCalendar", "Loading anime data...")
         font.pixelSize: Theme.fontSizeMedium
         color: Theme.surfaceVariantText
     }

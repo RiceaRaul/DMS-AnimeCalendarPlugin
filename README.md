@@ -27,7 +27,7 @@ A QuickShell plugin for DankMaterialShell that tracks anime episode releases and
 ## Requirements
 
 - [QuickShell](https://github.com/outfoxxed/quickshell)
-- [DankMaterialShell](https://github.com/your-repo/DankMaterialShell)
+- [Dux Shell](https://github.com/duxlabs-dev/dux-shell) 2.0 or newer (for older DankMaterialShell versions use the `dms-variant` branch)
 - An API token from [animeschedule.net](https://animeschedule.net)
 - `curl` (fetches the timetable)
 - `notify-send` from libnotify (for desktop notifications)

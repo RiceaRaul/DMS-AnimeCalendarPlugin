@@ -2,9 +2,9 @@
   "id": "animeCalendar",
   "name": "Anime Calendar",
   "description": "Bar widget that shows the airing timetable from the third-party animeschedule.net API (requires your own animeschedule.net API token), keeps a watchlist and sends desktop notifications when episodes air.",
-  "version": "1.0.2",
+  "version": "2.0.0",
   "author": "Ricea Ion Raul",
-  "icon": "widgets",
+  "icon": "calendar_month",
   "type": "widget",
   "component": "./Widget.qml",
   "settings": "./Settings.qml",
@@ -15,5 +15,6 @@
   "dependencies": [
     "curl",
     "notify-send"
-  ]
+  ],
+  "requires_dms": ">=2.0.0"
 }

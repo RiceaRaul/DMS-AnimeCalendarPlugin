@@ -1,6 +1,6 @@
 import QtQuick
 import qs.Common
-import qs.Widgets
+import qs.DCommon.Widgets
 import qs.Modules.Plugins
 import QtQuick.Layouts
 import Quickshell
@@ -11,35 +11,37 @@ import "./services" as Services
 PluginComponent {
     id: root
 
-    property int todayCount: Services.AnimeScheduleService.watchlistTodayCount
-    property bool isLoading: Services.AnimeScheduleService.isLoading
-    property string barMode: pluginData.barIndicatorMode || "icon_count"
+    readonly property int todayCount: Services.AnimeScheduleService.watchlistTodayCount
+    readonly property string barMode: pluginData.barIndicatorMode ?? "icon_count"
 
-    // Get next airing time from watchlist
-    property string nextAiringTime: {
-        var list = Services.AnimeScheduleService.watchlistTodayAnime;
-        if (!list || list.length === 0) return "";
-        var now = new Date();
-        for (var i = 0; i < list.length; i++) {
-            var anime = list[i];
-            var airDate = Services.AnimeScheduleService.parseDate(anime.episodeDate);
-            if (airDate && airDate.getTime() > now.getTime()) {
+    // Ticks the countdown; stopped while the bar is hidden or the countdown isn't shown
+    SystemClock {
+        id: clock
+        enabled: root.surfaceLive && root.barMode === "icon_time"
+        precision: SystemClock.Minutes
+    }
+
+    readonly property string nextAiringTime: {
+        const now = clock.date.getTime();
+        const list = Services.AnimeScheduleService.watchlistTodayAnime;
+        for (let i = 0; i < list.length; i++) {
+            const airDate = Services.AnimeScheduleService.parseDate(list[i].episodeDate);
+            if (airDate && airDate.getTime() > now)
                 return Services.AnimeScheduleService.getTimeUntil(airDate);
-            }
         }
         return "";
     }
 
-    // Text to display based on mode
-    property string pillText: {
-        if (barMode === "icon_only") return "";
-        if (barMode === "icon_time") return nextAiringTime || (todayCount > 0 ? todayCount + " today" : "");
-        // icon_count (default)
-        return todayCount > 0 ? todayCount + " today" : "";
+    readonly property string pillText: {
+        const countText = todayCount > 0 ? I18n.trFor("animeCalendar", "%1 today").arg(todayCount) : "";
+        if (barMode === "icon_only")
+            return "";
+        if (barMode === "icon_time")
+            return nextAiringTime || countText;
+        return countText;
     }
 
     property bool watchlistLoaded: false
-    readonly property int tabBarHeight: Theme.iconSize + Theme.spacingM
 
     Component.onCompleted: {
         updateApiToken();
@@ -128,46 +130,48 @@ PluginComponent {
 
     horizontalBarPill: Component {
         Row {
-            spacing: Theme.spacingS
+            spacing: Theme.spacingXS
 
-            DankIcon {
-                name: "calendar_month"
-                size: Theme.iconSize
-                color: Theme.primary
+            DIcon {
                 anchors.verticalCenter: parent.verticalCenter
+                name: "calendar_month"
+                size: root.iconSize
+                color: Theme.widgetIconColor
             }
 
             StyledText {
-                text: root.pillText
-                font.pixelSize: Theme.fontSizeMedium
-                color: Theme.surfaceText
                 anchors.verticalCenter: parent.verticalCenter
-                visible: root.barMode !== "icon_only" && text !== ""
+                visible: text !== ""
+                text: root.pillText
+                font.pixelSize: root.textSize
+                color: Theme.widgetTextColor
             }
         }
     }
 
     verticalBarPill: Component {
         Column {
-            spacing: Theme.spacingXS
+            spacing: Theme.spacingXXS
 
-            DankIcon {
-                name: "calendar_month"
-                size: Theme.iconSize
-                color: Theme.primary
+            DIcon {
                 anchors.horizontalCenter: parent.horizontalCenter
+                name: "calendar_month"
+                size: root.iconSize
+                color: Theme.widgetIconColor
             }
 
             StyledText {
+                anchors.horizontalCenter: parent.horizontalCenter
+                visible: text !== ""
                 text: {
-                    if (root.barMode === "icon_only") return "";
-                    if (root.barMode === "icon_time") return root.nextAiringTime || "";
+                    if (root.barMode === "icon_only")
+                        return "";
+                    if (root.barMode === "icon_time")
+                        return root.nextAiringTime;
                     return root.todayCount > 0 ? root.todayCount.toString() : "";
                 }
-                font.pixelSize: Theme.fontSizeSmall
-                color: Theme.surfaceText
-                anchors.horizontalCenter: parent.horizontalCenter
-                visible: root.barMode !== "icon_only" && text !== ""
+                font.pixelSize: root.textSize
+                color: Theme.widgetTextColor
             }
         }
     }
@@ -176,76 +180,42 @@ PluginComponent {
         PopoutComponent {
             id: popoutColumn
 
-            headerText: "Anime Calendar"
-            detailsText: root.todayCount > 0 ? root.todayCount + " from watchlist airing today" : "No watchlist anime today"
+            headerText: I18n.trFor("animeCalendar", "Anime Calendar")
+            detailsText: root.todayCount > 0 ? I18n.trFor("animeCalendar", "%1 from watchlist airing today").arg(root.todayCount) : I18n.trFor("animeCalendar", "No watchlist anime today")
             showCloseButton: true
 
             Item {
                 width: parent.width
                 implicitHeight: root.popoutHeight - popoutColumn.headerHeight - popoutColumn.detailsHeight - Theme.spacingXL
 
-                Column {
-                    anchors.fill: parent
-                    spacing: 0
+                DTabBar {
+                    id: tabBar
+                    anchors.top: parent.top
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    tabHeight: Theme.buttonHeightS
+                    model: [
+                        { text: I18n.trFor("animeCalendar", "Season"), icon: "calendar_month" },
+                        { text: I18n.trFor("animeCalendar", "Today"), icon: "today" }
+                    ]
+                    onTabClicked: index => tabBar.currentIndex = index
+                }
 
-                    //Tab Bar
-                    Row {
-                        width: parent.width
-                        height: root.tabBarHeight
-                        spacing: 0
+                StackLayout {
+                    anchors.top: tabBar.bottom
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    currentIndex: tabBar.currentIndex
 
-                        Repeater {
-                            id: tabRepeater
-                            model: ["Season", "Today"]
+                    AnimeCalendarComponents.SeasonTab {}
 
-                            Rectangle{
-                                width: parent.width / 2
-                                height: parent.height
-                                color: tabBar.currentIndex === index ? Theme.surfaceContainerHigh : "transparent"
-
-                                StyledText {
-                                    anchors.centerIn: parent
-                                    text: modelData
-                                    font.pixelSize: Theme.fontSizeMedium
-                                    font.weight: tabBar.currentIndex === index ? Font.Bold : Font.Normal
-                                    color: tabBar.currentIndex === index ? Theme.primary : Theme.surfaceVariantText
-                                }
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: tabBar.currentIndex = index
-                                }
-
-                                Rectangle {
-                                    anchors.bottom: parent.bottom
-                                    width: parent.width
-                                    height: Theme.spacingXS / 2
-                                    color: Theme.primary
-                                    visible: tabBar.currentIndex === index
-                                }
-                            }
-                        }
-                    }
-
-                    //Tab Content
-                    StackLayout {
-                        id: tabBar
-                        width: parent.width
-                        height: parent.height - root.tabBarHeight
-                        currentIndex: 0
-
-                        AnimeCalendarComponents.SeasonTab {
-                        }
-
-                        AnimeCalendarComponents.TodayTab {
-                        }
-                    }
+                    AnimeCalendarComponents.TodayTab {}
                 }
             }
         }
     }
 
-    popoutWidth: 400
-    popoutHeight: 500
+    popoutWidth: Theme.listItemHeight * 7
+    popoutHeight: Theme.listItemHeight * 9
 }

@@ -1,19 +1,19 @@
 import QtQuick
 import qs.Common
-import qs.Widgets
+import qs.DCommon.Widgets
 
 Column {
     id: root
 
     property string iconName: "inbox"
-    property string message: "No items found"
+    property string message: I18n.trFor("animeCalendar", "No items found")
     property string details: ""
 
     width: parent.width
     spacing: Theme.spacingM
     anchors.centerIn: parent
 
-    DankIcon {
+    DIcon {
         anchors.horizontalCenter: parent.horizontalCenter
         name: root.iconName
         size: Theme.iconSizeLarge

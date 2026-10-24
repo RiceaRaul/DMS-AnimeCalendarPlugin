@@ -1,12 +1,11 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.Common
-import qs.Widgets
+import qs.DCommon.Widgets
 import "../services" as Services
 
 Item {
     id: root
-    anchors.fill: parent
 
     property bool isLoading: Services.AnimeScheduleService.isLoading
     property bool showAll: false
@@ -38,7 +37,7 @@ Item {
             spacing: Theme.spacingS
 
             StyledText {
-                text: root.showAll ? "My Watchlist" : "Watchlist - Today"
+                text: root.showAll ? I18n.trFor("animeCalendar", "My Watchlist") : I18n.trFor("animeCalendar", "Watchlist - Today")
                 font.pixelSize: Theme.fontSizeMedium
                 font.weight: Font.Bold
                 color: Theme.surfaceText
@@ -47,7 +46,7 @@ Item {
             Rectangle {
                 Layout.preferredWidth: countBadge.width + Theme.spacingM
                 Layout.preferredHeight: countBadge.height + Theme.spacingXS
-                radius: Theme.cornerRadius / 2
+                radius: Theme.cornerRadiusS
                 color: Theme.primaryContainer
                 visible: todayList.length > 0
 
@@ -63,56 +62,21 @@ Item {
 
             Item { Layout.fillWidth: true }
 
-            // Toggle buttons
-            Row {
-                spacing: Theme.spacingXS
-
-                Rectangle {
-                    width: watchlistBtnText.width + Theme.spacingM
-                    height: Theme.iconSize + Theme.spacingXS
-                    radius: Theme.cornerRadius / 2
-                    color: !root.showAll ? Theme.primary : Theme.surfaceContainerHigh
-
-                    StyledText {
-                        id: watchlistBtnText
-                        anchors.centerIn: parent
-                        text: "Watchlist"
-                        font.pixelSize: Theme.fontSizeSmall
-                        color: !root.showAll ? Theme.onPrimary : Theme.surfaceVariantText
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: root.showAll = false
-                    }
-                }
-
-                Rectangle {
-                    width: allBtnText.width + Theme.spacingM
-                    height: Theme.iconSize + Theme.spacingXS
-                    radius: Theme.cornerRadius / 2
-                    color: root.showAll ? Theme.primary : Theme.surfaceContainerHigh
-
-                    StyledText {
-                        id: allBtnText
-                        anchors.centerIn: parent
-                        text: "All"
-                        font.pixelSize: Theme.fontSizeSmall
-                        color: root.showAll ? Theme.onPrimary : Theme.surfaceVariantText
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: root.showAll = true
-                    }
+            DButtonGroup {
+                size: "small"
+                arrowKeysSelect: false
+                checkEnabled: false
+                model: [I18n.trFor("animeCalendar", "Watchlist"), I18n.trFor("animeCalendar", "All")]
+                currentIndex: root.showAll ? 1 : 0
+                onSelectionChanged: (index, selected) => {
+                    if (selected)
+                        root.showAll = index === 1;
                 }
             }
 
-            DankActionButton {
+            DActionButton {
                 iconName: "refresh"
-                tooltipText: "Refresh anime list"
+                tooltipText: I18n.trFor("animeCalendar", "Refresh anime list")
                 enabled: !root.isLoading
                 onClicked: Services.AnimeScheduleService.forceRefresh()
             }
@@ -135,7 +99,7 @@ Item {
                 spacing: Theme.spacingM
                 visible: Services.AnimeScheduleService.apiToken === ""
 
-                DankIcon {
+                DIcon {
                     anchors.horizontalCenter: parent.horizontalCenter
                     name: "key"
                     size: Theme.iconSizeLarge
@@ -144,7 +108,7 @@ Item {
 
                 StyledText {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: "API Token Required"
+                    text: I18n.trFor("animeCalendar", "API Token Required")
                     font.pixelSize: Theme.fontSizeMedium
                     font.weight: Font.Medium
                     color: Theme.surfaceText
@@ -157,7 +121,7 @@ Item {
                 spacing: Theme.spacingM
                 visible: !root.isLoading && todayList.length === 0 && Services.AnimeScheduleService.apiToken !== "" && !Services.AnimeScheduleService.hasError
 
-                DankIcon {
+                DIcon {
                     anchors.horizontalCenter: parent.horizontalCenter
                     name: "event_busy"
                     size: Theme.iconSizeLarge
@@ -166,7 +130,7 @@ Item {
 
                 StyledText {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: "No watchlist anime today"
+                    text: I18n.trFor("animeCalendar", "No watchlist anime today")
                     font.pixelSize: Theme.fontSizeMedium
                     font.weight: Font.Medium
                     color: Theme.surfaceText
@@ -174,14 +138,14 @@ Item {
 
                 StyledText {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    text: "Add anime from Season tab"
+                    text: I18n.trFor("animeCalendar", "Add anime from Season tab")
                     font.pixelSize: Theme.fontSizeSmall
                     color: Theme.surfaceVariantText
                 }
             }
 
             // Today's Anime List
-            DankListView {
+            DListView {
                 id: todayListView
                 anchors.fill: parent
                 visible: todayList.length > 0
@@ -193,17 +157,24 @@ Item {
                 delegate: AnimeListItem {
                     width: todayListView.width
                     anime: modelData
-                    title: modelData.title || modelData.route || "Unknown"
-                    episodeNumber: modelData.episodeNumber ? "Episode " + modelData.episodeNumber : ""
+                    title: modelData.title || modelData.route || I18n.trFor("animeCalendar", "Unknown")
+                    // "All" shows the upcoming episode; "Watchlist" shows today's as listed
+                    readonly property var airing: root.showAll ? Services.AnimeScheduleService.nextAiring(modelData) : {
+                        date: Services.AnimeScheduleService.parseDate(modelData.episodeDate),
+                        episode: Number(modelData.episodeNumber) || 0
+                    }
+
+                    episodeNumber: airing.episode > 0 ? I18n.trFor("animeCalendar", "Episode %1").arg(airing.episode) : ""
                     airTime: {
-                        const date = Services.AnimeScheduleService.parseDate(modelData.episodeDate);
-                        if (!date) return "";
-                        return "Today at " + Services.AnimeScheduleService.formatTime(date);
+                        if (!airing.date)
+                            return "";
+                        const time = Services.AnimeScheduleService.formatTime(airing.date);
+                        if (Services.AnimeScheduleService.isToday(airing.date))
+                            return I18n.trFor("animeCalendar", "Today at %1").arg(time);
+                        return I18n.trFor("animeCalendar", "%1 at %2").arg(Services.AnimeScheduleService.formatDate(airing.date)).arg(time);
                     }
-                    timeUntil: {
-                        const date = Services.AnimeScheduleService.parseDate(modelData.episodeDate);
-                        return Services.AnimeScheduleService.getTimeUntil(date);
-                    }
+                    timeUntil: Services.AnimeScheduleService.getTimeUntil(airing.date)
+                    aired: Services.AnimeScheduleService.hasAired(airing.date)
                     imageUrl: {
                         if (modelData.imageVersionRoute) {
                             return Services.AnimeScheduleService.getImageUrl(modelData.imageVersionRoute);
