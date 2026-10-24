@@ -28,14 +28,10 @@ Singleton {
     property var todayAnime: []
     property int todayCount: 0
 
-    // Watchlist, persisted in plugin settings by Widget.qml
+    // Entries { route, title, english, romaji, native, image, episodes, finished }, persisted by Daemon.qml
     property var watchlist: []
     property var watchlistTodayAnime: []
     property int watchlistTodayCount: 0
-
-    // Rate limiting
-    property int rateLimitRemaining: 120
-    property int rateLimitReset: 0
 
     // Retry logic
     property int retryAttempts: 0
@@ -49,6 +45,10 @@ Singleton {
     property string timetableType: "sub"
 
     readonly property var curlBaseCmd: ["curl", "-sS", "--fail", "--connect-timeout", "10", "--max-time", "30", "--compressed"]
+
+    // Pending { url, callbacks }; one curl at a time
+    property var _queue: []
+    property var _active: null
 
     signal timetableUpdated()
     signal errorOccurred(string message)
@@ -99,28 +99,86 @@ Singleton {
             return;
         }
 
-        if (timetableFetcher.running) {
+        if (root.isLoading)
             return;
-        }
 
         const now = Date.now();
-        if (now - root.lastFetchTime < root.minFetchInterval) {
+        if (now - root.lastFetchTime < root.minFetchInterval)
             return;
-        }
 
         root.lastFetchTime = now;
         root.isLoading = true;
         root.hasError = false;
         root.errorMessage = "";
 
+        request("/timetables/" + (type || "sub"), null, (error, data) => {
+            if (error) {
+                root.handleFailure(error);
+                return;
+            }
+            if (!Array.isArray(data)) {
+                root.handleFailure(I18n.trFor("animeCalendar", "Invalid response format"));
+                return;
+            }
+            root.timetable = data;
+            root.filterTodayAnime();
+            root.isLoading = false;
+            root.handleSuccess();
+            root.timetableUpdated();
+        });
+    }
+
+    // callback(error, data): error is a translated message or null
+    function request(path, query, callback) {
+        if (!root.apiToken) {
+            callback(I18n.trFor("animeCalendar", "API token not configured"), null);
+            return;
+        }
+        let url = root.baseUrl + path;
+        const params = Object.keys(query || {}).map(key => encodeURIComponent(key) + "=" + encodeURIComponent(query[key]));
+        if (params.length)
+            url += "?" + params.join("&");
+
+        const pending = root._active?.url === url ? root._active : root._queue.find(item => item.url === url);
+        if (pending) {
+            pending.callbacks.push(callback);
+            return;
+        }
+        root._queue.push({ url: url, callbacks: [callback] });
+        root._runNext();
+    }
+
+    function _runNext() {
+        if (root._active || !root._queue.length)
+            return;
+        root._active = Object.assign(root._queue.shift(), { exitCode: -1, exited: false, body: null });
         // "-H @-" reads the auth header from stdin so the token never shows up in ps or /proc
-        timetableFetcher.command = curlBaseCmd.concat([
-            "-H", "@-",
-            "-H", "Accept: application/json",
-            getTimetableUrl(type)
-        ]);
-        timetableFetcher.stdinEnabled = true;
-        timetableFetcher.running = true;
+        requester.command = curlBaseCmd.concat(["-H", "@-", "-H", "Accept: application/json", root._active.url]);
+        requester.stdinEnabled = true;
+        requester.running = true;
+    }
+
+    // Process exit and stdout end arrive in either order; finish after both
+    function _maybeFinish() {
+        const job = root._active;
+        if (!job || !job.exited || job.body === null)
+            return;
+        root._active = null;
+
+        let error = null;
+        let data = null;
+        if (job.exitCode !== 0) {
+            error = I18n.trFor("animeCalendar", "Request failed with exit code: %1").arg(job.exitCode);
+        } else {
+            try {
+                data = JSON.parse(job.body);
+            } catch (e) {
+                error = I18n.trFor("animeCalendar", "Failed to parse response: %1").arg(e.message);
+            }
+        }
+        for (const callback of job.callbacks)
+            callback(error, data);
+        root._runNext();
     }
 
     function forceRefresh() {
@@ -221,26 +279,47 @@ Singleton {
     }
 
     function isInWatchlist(anime) {
-        if (!anime || !anime.route) return false;
-        return root.watchlist.indexOf(anime.route) !== -1;
+        if (!anime || !anime.route)
+            return false;
+        return root.watchlist.some(entry => entry.route === anime.route);
+    }
+
+    function watchlistEntry(anime) {
+        return {
+            route: anime.route,
+            title: anime.title || "",
+            english: anime.english || "",
+            romaji: anime.romaji || "",
+            native: anime.native || "",
+            image: anime.imageVersionRoute || "",
+            episodes: Number(anime.episodes) || 0,
+            finished: false
+        };
     }
 
     function toggleWatchlist(anime) {
-        if (!anime || !anime.route) return;
-        var idx = root.watchlist.indexOf(anime.route);
-        var newList = root.watchlist.slice();
-        if (idx === -1) {
-            newList.push(anime.route);
-        } else {
-            newList.splice(idx, 1);
-        }
-        root.watchlist = newList;
+        if (!anime || !anime.route)
+            return;
+        if (isInWatchlist(anime))
+            root.watchlist = root.watchlist.filter(entry => entry.route !== anime.route);
+        else
+            root.watchlist = root.watchlist.concat([watchlistEntry(anime)]);
         updateWatchlistToday();
         watchlistModified();
     }
 
+    // Versions before 2.1 stored bare route strings
     function setWatchlist(list) {
-        root.watchlist = list || [];
+        const seen = {};
+        const entries = [];
+        for (const item of list || []) {
+            const entry = typeof item === "string" ? { route: item } : item;
+            if (!entry || typeof entry.route !== "string" || !entry.route || seen[entry.route])
+                continue;
+            seen[entry.route] = true;
+            entries.push(entry);
+        }
+        root.watchlist = entries;
         updateWatchlistToday();
     }
 
@@ -287,8 +366,7 @@ Singleton {
     }
 
     Process {
-        id: timetableFetcher
-        running: false
+        id: requester
         stdinEnabled: true
 
         onStarted: {
@@ -298,52 +376,19 @@ Singleton {
 
         stdout: StdioCollector {
             onStreamFinished: {
-                const raw = text.trim();
-
-                if (!raw) {
-                    root.handleFailure(I18n.trFor("animeCalendar", "Empty response from API"));
+                if (!root._active)
                     return;
-                }
-
-                // Check if it's an error response
-                if (raw.startsWith("{") && raw.includes("\"error\"")) {
-                    try {
-                        const errorData = JSON.parse(raw);
-                        root.handleFailure(errorData.message || errorData.error || "API error");
-                        return;
-                    } catch (e) {
-                        // Continue to try parsing as array
-                    }
-                }
-
-                if (!raw.startsWith("[")) {
-                    root.handleFailure(I18n.trFor("animeCalendar", "Invalid response format"));
-                    return;
-                }
-
-                try {
-                    const data = JSON.parse(raw);
-
-                    if (!Array.isArray(data)) {
-                        throw new Error("Expected array response");
-                    }
-
-                    root.timetable = data;
-                    root.filterTodayAnime();
-                    root.isLoading = false;
-                    root.handleSuccess();
-                    root.timetableUpdated();
-
-                } catch (e) {
-                    root.handleFailure(I18n.trFor("animeCalendar", "Failed to parse response: %1").arg(e.message));
-                }
+                root._active.body = text;
+                root._maybeFinish();
             }
         }
 
         onExited: exitCode => {
-            if (exitCode !== 0) {
-                root.handleFailure(I18n.trFor("animeCalendar", "Request failed with exit code: %1").arg(exitCode));
-            }
+            if (!root._active)
+                return;
+            root._active.exitCode = exitCode;
+            root._active.exited = true;
+            root._maybeFinish();
         }
     }
 
@@ -360,11 +405,7 @@ Singleton {
     Timer {
         id: retryTimer
         interval: root.retryDelay
-        running: false
-        repeat: false
-        onTriggered: {
-            root.refresh();
-        }
+        onTriggered: root.forceRefresh()
     }
 
     Process {

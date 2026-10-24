@@ -11,19 +11,9 @@ Item {
     property bool showAll: false
     property var todayList: showAll ? root.allWatchlistAnime : Services.AnimeScheduleService.watchlistTodayAnime
 
-    // All watchlist anime (not just today)
     property var allWatchlistAnime: {
-        var result = [];
-        var timetable = Services.AnimeScheduleService.timetable;
-        var watchlist = Services.AnimeScheduleService.watchlist;
-        if (!timetable || !watchlist) return result;
-        for (var i = 0; i < timetable.length; i++) {
-            var anime = timetable[i];
-            if (anime.route && watchlist.indexOf(anime.route) !== -1) {
-                result.push(anime);
-            }
-        }
-        return result;
+        Services.AnimeScheduleService.watchlist;
+        return Services.AnimeScheduleService.timetable.filter(anime => Services.AnimeScheduleService.isInWatchlist(anime));
     }
 
     ColumnLayout {

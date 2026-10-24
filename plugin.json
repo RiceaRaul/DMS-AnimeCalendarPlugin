@@ -5,8 +5,15 @@
   "version": "2.0.0",
   "author": "Ricea Ion Raul",
   "icon": "calendar_month",
-  "type": "widget",
-  "component": "./Widget.qml",
+  "type": "composite",
+  "capabilities": [
+    "daemon",
+    "dankbar-widget"
+  ],
+  "components": {
+    "daemon": "./Daemon.qml",
+    "widget": "./Widget.qml"
+  },
   "settings": "./Settings.qml",
   "permissions": [
     "settings_read",
